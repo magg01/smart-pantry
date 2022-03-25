@@ -2,11 +2,16 @@
 #include <ESP8266WebServer.h>
 #include "DHT.h"
 #include <LiquidCrystal_I2C.h>
+#include <ArduinoJson.h>
 
 // set the port for the web server
 ESP8266WebServer server(80);
 const char* ssid = "FRITZ!Box 7590 XO";
 const char* password = "96087252974805885212";
+
+//allocate the JSON document
+//allows us to allocate memory to the document dynamically.
+DynamicJsonDocument doc(1024);
 
 const int switch_pin = D0;
 int switch_value;
@@ -87,6 +92,7 @@ void setup() {
 
   server.on("/", get_index);
   server.on("/setBuzzerStatus", setBuzzerStatus);
+  server.on("/json/sensors", getSensorJsonData);
 
   server.begin();
   Serial.println("Server listening...");
@@ -409,4 +415,21 @@ void soundWarningBuzzer(){
   tone(buzzer_pin, 1000);  
   delay(2000);
   noTone(buzzer_pin);
+}
+
+void getSensorJsonData(){
+  // add JSON request data
+  doc["content-type"] = "application/json";
+  doc["status"] = 200;
+  
+  JsonObject tempDHT11 = doc.createNestedObject("temperature sensor");
+  tempDHT11["sensorName"] = "DHT11";
+  tempDHT11["sensorValue"] = temperature;
+  JsonObject humDHT11 = doc.createNestedObject("humidity sensor");
+  humDHT11["sensorName"] = "DHT11";
+  humDHT11["sensorValue"] = humidity;
+
+  String jsonStr;
+  serializeJsonPretty(doc, jsonStr);
+  server.send(200, "application/json", jsonStr);
 }
