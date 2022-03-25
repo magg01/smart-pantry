@@ -129,7 +129,7 @@ void loop() {
     trigBuzzerWhenOutsideSpecifiedRange();
     
     //chose which display to show by the potentiometer position
-    int displayValue = map(poteValue, 0, 1023, 0, 1);
+    int displayValue = map(poteValue, 0, 1023, 0, 2);
     //if the display to show is different from the last loop, clear the LCD screen and set the new value of the display
     if(displayValue != display_screen){
       lcd.clear();
@@ -139,8 +139,10 @@ void loop() {
     if(displayValue == 0){
       displayData();  
     //else display the current set parameters
-    } else {
+    } else if (displayValue == 1){
       displayParameterValues();
+    } else {
+      displayWebserverIpAddress();
     }
   //if monitor mode is chosen by the switch position
   } else {
@@ -310,18 +312,25 @@ void displayData(){
   lcd.print(humMessage );
 }
 
+void displayWebserverIpAddress(){
+  String ipAddress = WiFi.localIP().toString();
+  lcd.setCursor(0,0);
+  lcd.print("IP Address:");
+  lcd.setCursor(0,1);
+  lcd.print(ipAddress);
+}
+
 void displayParameterValues(){
-  lcd.print("LT: ");
+  lcd.setCursor(0,0);
+  lcd.print("Temp: ");
   lcd.print(lowSetTemp);
-  lcd.print("C, ");
-  lcd.print("HT: ");
+  lcd.print(" - ");
   lcd.print(highSetTemp);
   lcd.print("C");
   lcd.setCursor(0,1);
-  lcd.print("LH: ");
+  lcd.print("Hum: ");
   lcd.print(lowSetHum);
-  lcd.print("%, ");
-  lcd.print("HH: ");
+  lcd.print(" - ");
   lcd.print(highSetHum);
   lcd.print("%");
 }
