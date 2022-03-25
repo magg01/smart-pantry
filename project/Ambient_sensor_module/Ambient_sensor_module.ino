@@ -142,29 +142,29 @@ void loop() {
       lowSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
       if (lowSetTemp != prevLowSetTemp){
         lcd.clear();
+        displaySetParameterMessage(setLowTempMessage1, &lowSetTemp, "C");
       }
-      displaySetParameterMessage(setLowTempMessage1, &lowSetTemp, "C");
     } else if(push_button_count_value == 1){
       int prevHighSetTemp = highSetTemp;
       highSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
       if (highSetTemp != prevHighSetTemp){
         lcd.clear();
+        displaySetParameterMessage(setHighTempMessage1, &highSetTemp, "C");
       }
-      displaySetParameterMessage(setHighTempMessage1, &highSetTemp, "C");
     } else if(push_button_count_value == 2){
       int prevLowSetHum = lowSetHum;
       lowSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
       if (lowSetHum != prevLowSetHum){
         lcd.clear();
+        displaySetParameterMessage(setLowHumMessage1, &lowSetHum, "%");
       }
-      displaySetParameterMessage(setLowHumMessage1, &lowSetHum, "%");
     } else {
       int prevHighSetHum = highSetHum;
       highSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
       if (highSetHum != prevHighSetHum){
         lcd.clear();
+        displaySetParameterMessage(setHighHumMessage1, &highSetHum, "%");
       }
-      displaySetParameterMessage(setHighHumMessage1, &highSetHum, "%");
     }
 
     if(isPushButtonPressed()){
