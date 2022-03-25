@@ -245,7 +245,7 @@ void readTempHum(){
 
 void setLowSetTemp(){
   int prevLowSetTemp = lowSetTemp;
-  lowSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
+  lowSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, highSetTemp);
   if (lowSetTemp != prevLowSetTemp){
     lcd.clear();
   }
@@ -253,7 +253,7 @@ void setLowSetTemp(){
 
 void setHighSetTemp(){
   int prevHighSetTemp = highSetTemp;
-  highSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
+  highSetTemp = map(poteValue, 1023, 0, lowSetTemp, maxMeasurableTemp);
   if (highSetTemp != prevHighSetTemp){
     lcd.clear();
   }
@@ -261,7 +261,7 @@ void setHighSetTemp(){
 
 void setLowSetHum(){
   int prevLowSetHum = lowSetHum;
-  lowSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
+  lowSetHum = map(poteValue, 1023, 0, minMeasurableHum, highSetHum);
   if (lowSetHum != prevLowSetHum){
     lcd.clear();
   }
@@ -269,7 +269,7 @@ void setLowSetHum(){
 
 void setHighSetHum(){
   int prevHighSetHum = highSetHum;
-  highSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
+  highSetHum = map(poteValue, 1023, 0, lowSetHum, maxMeasurableHum);
   if (highSetHum != prevHighSetHum){
     lcd.clear();
   }
