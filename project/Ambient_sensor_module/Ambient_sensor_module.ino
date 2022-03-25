@@ -201,15 +201,25 @@ void get_index(){
   html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
   html += "<body> <h1>The Smart Pantry Sensor Module Dashboard</h1>";
   html += "<p>Welcome to the smart pantry dashboard</p>";
-  html += "<div> <p> <strong> The temperature reading is: ";
+  html += "<div> <p>The temperature reading is: <strong>";
   html += temperature;
-  html += "</strong> degrees. ";
-  
-  html += "</p>";
-  html += "<div> <p> <strong> The humidity reading is: ";
+  html += "</strong> C. ";
+  if(isTempWithinSpecifiedRange()){
+    html += "Which is within the specified range.";
+  } else {
+    html += "Which is <strong>outside</strong> the specified range.";
+  }
+  html += "</p></div>";
+  html += "<div> <p>The humidity reading is: <strong>";
   html += humidity;
-  html += " % </strong> </p></div>";
-  html += "<p> <strong>Test the warning buzzer ";
+  html += "</strong> % ";
+  if(isHumWithinSpecifiedRange()){
+    html += "Which is within the specified range.";
+  } else {
+    html += "Which is <strong>outside</strong> the specified range.";
+  }
+  html += "</p></div>";
+  html += "<div><p>Test the warning buzzer:</p></div>";
   html += "<a href=\"/setBuzzerStatus?s=0\" target=\"_blank\"\"\"><button>Turn Off </button></a>";
   html += "<a href=\"/setBuzzerStatus?s=1\" target=\"_blank\"\"\"><button>Turn On </button></a>";
   html += "</body> </html>";
