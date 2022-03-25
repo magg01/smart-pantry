@@ -56,6 +56,8 @@ const String setLowTempMessage1 = "Set low temp:";
 const String setHighTempMessage1 = "Set high temp:";
 const String setLowHumMessage1 = "Set low humid:";
 const String setHighHumMessage1 = "Set high humid:";
+const String save_parameters_message_line1 = "Go to monitor";
+const String save_parameters_message_line2 = "mode to save.";
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -141,16 +143,18 @@ void loop() {
     } else if(push_button_count_value == 2){
       setLowSetHum();
       displaySetParameterMessage(setLowHumMessage1, &lowSetHum, "%");
-    } else {
+    } else if(push_button_count_value == 3) {
       setHighSetHum();
       displaySetParameterMessage(setHighHumMessage1, &highSetHum, "%");
+    } else {
+      displaySaveParametersMessage();
     }
 
     int prevPushButtonValue = push_button_value;
     if(isPushButtonPressed()){
       if(prevPushButtonValue != push_button_value && push_button_value == 1){
         lcd.clear();
-        if(push_button_count_value == 3){
+        if(push_button_count_value == 4){
           push_button_count_value = 0;
         } else {
           push_button_count_value += 1;
@@ -313,20 +317,19 @@ void displayParameterValues(){
   lcd.print("%");
 }
 
-void displaySetLowTempMessage(){
-  lcd.setCursor(0,0);
-  lcd.print(setLowTempMessage1);
-  lcd.setCursor(0,1);
-  lcd.print(lowSetTemp);
-  lcd.print("C");
-}
-
 void displaySetParameterMessage(String message, int* valueToSet, String unit){
   lcd.setCursor(0,0);
   lcd.print(message);
   lcd.setCursor(0,1);
   lcd.print(*valueToSet);
   lcd.print(unit);
+}
+
+void displaySaveParametersMessage(){
+  lcd.setCursor(0,0);
+  lcd.print(save_parameters_message_line1);
+  lcd.setCursor(0,1);
+  lcd.print(save_parameters_message_line2);
 }
 
 void trigBuzzerWhenOutsideSpecifiedRange(){
