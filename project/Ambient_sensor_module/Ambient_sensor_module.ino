@@ -35,12 +35,12 @@ int maxMeasurableTemp = 50;
 int minMeasurableHum = 0; 
 int maxMeasurableHum = 100;
 
-//the low and high temperature thresholds set by the user
-int lowSetTemp;
-int highSetTemp;
-//the low and high humidity thresholds set by the user
-int lowSetHum;
-int highSetHum;
+//the low and high temperature thresholds set by the user (initialised to measurable ranges)
+int lowSetTemp = minMeasurableTemp;
+int highSetTemp = maxMeasurableTemp;
+//the low and high humidity thresholds set by the user (initialised to measurable ranges)
+int lowSetHum = minMeasurableHum;
+int highSetHum = maxMeasurableHum;
 
 int minTemp = -2;
 int maxTemp = 6;
@@ -121,7 +121,6 @@ void loop() {
     } else if(displayValue == 1){
       displayData();  
     } else {
-      lcd.clear();
       lcd.print("LT: ");
       lcd.print(lowSetTemp);
       lcd.print("C, ");
