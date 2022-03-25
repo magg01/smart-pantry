@@ -25,6 +25,7 @@ bool tempAlarmSignaled = false;
 
 //initialise the temperature and humidity pin
 const int temp_hum_pin = D6;
+bool humAlarmSignaled = false;
 
 //initialise the DHT11 component
 DHT dht(temp_hum_pin, DHT11);
@@ -100,6 +101,7 @@ void loop() {
   Serial.println("Server is running");
 
   //is the position switch set to Set Mode or Monitor Mode
+  
   if(!isSetModeActive()){
     //if in monitor mode
     //read the temperature and humidity into their global variables
@@ -185,7 +187,11 @@ void loop() {
 }
 
 bool isSetModeActive(){
+  bool prevSwitchValue = switch_value;
   switch_value = digitalRead(switch_pin);
+  if(prevSwitchValue != switch_value){
+    lcd.clear();
+  }
   if (switch_value == 0){
     return false;
   }
@@ -261,22 +267,18 @@ void readTempHum(){
 }
 
 void displayData(){
-  String tmp = "Temp: ";
-  tmp += temperature;
-  tmp += " degrees";
+  String tempMessage = "Temp: ";
+  tempMessage += temperature;
+  tempMessage += " C";
 
-  String hum = "Hum: ";
-  hum += humidity;
-  hum += " %";
+  String humMessage = "Hum: ";
+  humMessage += humidity;
+  humMessage += " %";
 
   lcd.setCursor(0,0);
-  lcd.print(tmp);
+  lcd.print(tempMessage);
   lcd.setCursor(0,1);
-  lcd.print(hum);
-}
-
-void countPushButtonPresses(){
-  
+  lcd.print(humMessage );
 }
 
 void displayWelcomeMessage(){
@@ -311,5 +313,14 @@ void trigBuzzerWhenOutsideSpecifiedRange(){
   }
   if(tempAlarmSignaled && temperature <= highSetTemp && temperature >= lowSetTemp){
     tempAlarmSignaled = false;
+  }
+  if((humidity > highSetHum || humidity < lowSetHum)&& !humAlarmSignaled){
+    tone(buzzer_pin, 1000);  
+    delay(2000);
+    noTone(buzzer_pin);
+    humAlarmSignaled = true;
+  }
+  if(humAlarmSignaled && humidity <= highSetHum && humidity >= lowSetHum){
+    humAlarmSignaled = false;
   }
 }
