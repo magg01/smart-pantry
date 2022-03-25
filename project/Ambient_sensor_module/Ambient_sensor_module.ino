@@ -31,9 +31,9 @@ bool humAlarmSignaled = false;
 DHT dht(temp_hum_pin, DHT11);
 
 int minMeasurableTemp = 0;
-int maxMeasurableTemp = 50;
-int minMeasurableHum = 0; 
-int maxMeasurableHum = 100;
+int maxMeasurableTemp = 60;
+int minMeasurableHum = 5; 
+int maxMeasurableHum = 95;
 
 //the low and high temperature thresholds set by the user (initialised to measurable ranges)
 int lowSetTemp = minMeasurableTemp;
