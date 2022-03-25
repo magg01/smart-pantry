@@ -131,7 +131,7 @@ void loop() {
     }
   //if monitor mode is chosen by the switch position
   } else {
-    //
+    //depending on how many times the push button is pressed cycle through the parameter settings
     if(push_button_count_value == 0){
       setLowSetTemp();
       displaySetParameterMessage(setLowTempMessage1, &lowSetTemp, "C");
@@ -146,22 +146,20 @@ void loop() {
       displaySetParameterMessage(setHighHumMessage1, &highSetHum, "%");
     }
 
+    int prevPushButtonValue = push_button_value;
     if(isPushButtonPressed()){
-      if(push_button_count_value == 4){
-        push_button_count_value = 0;
-      } else {
-        push_button_count_value += 1;
+      if(prevPushButtonValue != push_button_value && push_button_value == 1){
+        lcd.clear();
+        if(push_button_count_value == 3){
+          push_button_count_value = 0;
+        } else {
+          push_button_count_value += 1;
+        }
       }
     }
-    
-//    digitalWrite(buzzer_pin, LOW);
-//    poteValue = analogRead(potentiometer_pin);
-//    int brightnessValue = map(poteValue, 0, 1023, 0, 255);
-//    analogWrite(led_pin, brightnessValue);
-    //Serial.print(poteValue + ", ");
-    //Serial.println(brightnessValue);
   }
-  delay(100);
+  //Include a short delay to make the interaction less jittery
+//  delay(100);
 }
 
 bool isSetModeActive(){
@@ -179,10 +177,10 @@ bool isSetModeActive(){
 
 bool isPushButtonPressed(){
   push_button_value = digitalRead(push_button_pin);
-  if (push_button_value == 0){
-    return false;
+  if (push_button_value == 1){
+    return true;
   }
-  return true;
+  return false;
 }
 
 void get_index(){
