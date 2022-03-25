@@ -222,8 +222,8 @@ void get_index(){
   }
   html += "</p></div>";
   html += "<div><p>Test the warning buzzer:</p></div>";
-  html += "<a href=\"/setBuzzerStatus?s=0\" target=\"_blank\"\"\"><button>Turn Off </button></a>";
-  html += "<a href=\"/setBuzzerStatus?s=1\" target=\"_blank\"\"\"><button>Turn On </button></a>";
+  html += "<a href=\"/setBuzzerStatus?s=0\" target=\"_self\"\"\"><button>Turn Off </button></a>";
+  html += "<a href=\"/setBuzzerStatus?s=1\" target=\"_self\"\"\"><button>Turn On </button></a>";
   html += "</body> </html>";
   
   server.send(200, "text/html", html);
