@@ -425,9 +425,11 @@ void getSensorJsonData(){
   JsonObject tempDHT11 = doc.createNestedObject("temperature sensor");
   tempDHT11["sensorName"] = "DHT11";
   tempDHT11["sensorValue"] = temperature;
+  tempDHT11["inRange"] = isTempWithinSpecifiedRange();
   JsonObject humDHT11 = doc.createNestedObject("humidity sensor");
   humDHT11["sensorName"] = "DHT11";
   humDHT11["sensorValue"] = humidity;
+  humDHT11["inRange"] = isHumWithinSpecifiedRange();
 
   String jsonStr;
   serializeJsonPretty(doc, jsonStr);
