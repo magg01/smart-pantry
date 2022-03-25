@@ -419,6 +419,7 @@ void soundWarningBuzzer(){
 
 void getSensorJsonData(){
   // add JSON request data
+  doc.clear();
   doc["content-type"] = "application/json";
   doc["status"] = 200;
   
