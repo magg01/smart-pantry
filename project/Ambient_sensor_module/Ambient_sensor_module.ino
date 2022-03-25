@@ -190,6 +190,7 @@ bool isSetModeActive(){
   switch_value = digitalRead(switch_pin);
   if(prevSwitchValue != switch_value){
     lcd.clear();
+    push_button_value = 0;
   }
   if (switch_value == 0){
     return false;
