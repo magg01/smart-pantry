@@ -21,7 +21,7 @@ int poteValue;
 
 //initialise the buzzer pin
 const int buzzer_pin = D5;
-bool signaled = false;
+bool tempAlarmSignaled = false;
 
 //initialise the temperature and humidity pin
 const int temp_hum_pin = D6;
@@ -29,8 +29,8 @@ const int temp_hum_pin = D6;
 //initialise the DHT11 component
 DHT dht(temp_hum_pin, DHT11);
 
-int minMeasurableTemp = -20;
-int maxMeasurableTemp = 60;
+int minMeasurableTemp = 0;
+int maxMeasurableTemp = 50;
 int minMeasurableHum = 0; 
 int maxMeasurableHum = 100;
 
@@ -50,9 +50,7 @@ int humidity = 0;
 
 int displayScreen = 0;
 const String welcomeMessageLine1 = "Welcome to the";
-const String welcomeMessageLine2 = "Smart Fridge.";
-const String reminderMessageLine1 = "Time to fill up";
-const String reminderMessageLine2 = "the fridge.";
+const String welcomeMessageLine2 = "Smart Pantry.";
 const String setLowTempMessage1 = "Set low temp:";
 const String setHighTempMessage1 = "Set high temp:";
 const String setLowHumMessage1 = "Set low humid:";
@@ -95,19 +93,20 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  //handle incoming http requests
   server.handleClient();
 
   // This keeps the server and serial monitor available 
   Serial.println("Server is running");
 
-  if(!shouldSetValues()){   
+  //is the position switch set to Set Mode or Monitor Mode
+  if(!isSetModeActive()){
+    //if in monitor mode
+    //read the temperature and humidity into their global variables
     readTempHum();
-    
-    //Serial.println(fridgeTemperature());
-    int temp = fridgeTemperature();
 
-    trigBuzzerWhenAboveThreshold();
+    //trigger the buzzer if either parameters are out of their specified range
+    trigBuzzerWhenOutsideSpecifiedRange();
     
     poteValue = analogRead(potentiometer_pin);
     int displayValue = map(poteValue, 0, 1023, 0, 2);
@@ -120,25 +119,20 @@ void loop() {
     } else if(displayValue == 1){
       displayData();  
     } else {
-      if(signaled){
-        displayReminder();
-      }
-      else {
-        lcd.clear();
-        lcd.print("LT: ");
-        lcd.print(lowSetTemp);
-        lcd.print("C, ");
-        lcd.print("HT: ");
-        lcd.print(highSetTemp);
-        lcd.print("C");
-        lcd.setCursor(0,1);
-        lcd.print("LH: ");
-        lcd.print(lowSetHum);
-        lcd.print("%, ");
-        lcd.print("HH: ");
-        lcd.print(highSetHum);
-        lcd.print("%");
-      }
+      lcd.clear();
+      lcd.print("LT: ");
+      lcd.print(lowSetTemp);
+      lcd.print("C, ");
+      lcd.print("HT: ");
+      lcd.print(highSetTemp);
+      lcd.print("C");
+      lcd.setCursor(0,1);
+      lcd.print("LH: ");
+      lcd.print(lowSetHum);
+      lcd.print("%, ");
+      lcd.print("HH: ");
+      lcd.print(highSetHum);
+      lcd.print("%");
     }
   } else {
     poteValue = analogRead(potentiometer_pin);
@@ -190,7 +184,7 @@ void loop() {
   delay(100);
 }
 
-bool shouldSetValues(){
+bool isSetModeActive(){
   switch_value = digitalRead(switch_pin);
   if (switch_value == 0){
     return false;
@@ -204,12 +198,6 @@ bool isPushButtonPressed(){
     return false;
   }
   return true;
-}
-
-int fridgeTemperature(){
-  poteValue = analogRead(potentiometer_pin);
-  poteValue = map(poteValue, 0, 1023, minTemp, maxTemp);
-  return poteValue;
 }
 
 void get_index(){
@@ -254,15 +242,15 @@ void setBuzzerStatus(){
 
 void readTempHum(){
   //initialise a temporary variable, used to eliminate occasional false reads from our sensors.
-  int temp = 0;
-  temp = dht.readTemperature();
+  int temporary = 0;
+  temporary = dht.readTemperature();
   // this is the range of the DHT11 sensor. 
-  if(temp >= 0 && temp <=50){
-    temperature = temp;
+  if(temporary >= 0 && temporary <=50){
+    temperature = temporary;
   }
-  temp = dht.readHumidity();
-  if (temp >= 0 && temp <= 100){
-    humidity = temp;
+  temporary = dht.readHumidity();
+  if (temporary >= 0 && temporary <= 100){
+    humidity = temporary;
   }  
   Serial.print("temperature: ");
   Serial.print(temperature);
@@ -298,13 +286,6 @@ void displayWelcomeMessage(){
   lcd.print(welcomeMessageLine2);  
 }
 
-void displayReminder(){
-  lcd.setCursor(0,0);
-  lcd.print(reminderMessageLine1);
-  lcd.setCursor(0,1);
-  lcd.print(reminderMessageLine2);
-}
-
 void displaySetLowTempMessage(){
   lcd.setCursor(0,0);
   lcd.print(setLowTempMessage1);
@@ -321,14 +302,14 @@ void displaySetParameterMessage(String message, int* valueToSet, String unit){
   lcd.print(unit);
 }
 
-void trigBuzzerWhenAboveThreshold(){
-  if(temperature >= 30 && !signaled){
+void trigBuzzerWhenOutsideSpecifiedRange(){
+  if((temperature > highSetTemp || temperature < lowSetTemp)&& !tempAlarmSignaled){
     tone(buzzer_pin, 1000);  
     delay(2000);
     noTone(buzzer_pin);
-    signaled = true;
+    tempAlarmSignaled = true;
   }
-  if(temperature < 30){
-    signaled = false;
+  if(tempAlarmSignaled && temperature <= highSetTemp && temperature >= lowSetTemp){
+    tempAlarmSignaled = false;
   }
 }
