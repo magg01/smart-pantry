@@ -44,10 +44,6 @@ int highSetTemp = maxMeasurableTemp;
 int lowSetHum = minMeasurableHum;
 int highSetHum = maxMeasurableHum;
 
-int minTemp = -2;
-int maxTemp = 6;
-int prefTemp = 3;
-
 int temperature = 0;
 int humidity = 0;
 
@@ -203,22 +199,19 @@ bool isPushButtonPressed(){
 void get_index(){
   String html = "<!DOCTYPE html> <html>";
   html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
-  html += "<body> <h1>The Smart Fridge Dashboard</h1>";
-  html += "<p>Welcome to the smart fridge dashboard</p>";
-  html += "<div><p><strong>The temperature preference is: ";
-  html += prefTemp;
-  html += " degrees.";
-  html += "</strong></p>";
+  html += "<body> <h1>The Smart Pantry Sensor Module Dashboard</h1>";
+  html += "<p>Welcome to the smart pantry dashboard</p>";
   html += "<div> <p> <strong> The temperature reading is: ";
   html += temperature;
-  html += "</strong> degrees. </p>";
+  html += "</strong> degrees. ";
+  
+  html += "</p>";
   html += "<div> <p> <strong> The humidity reading is: ";
   html += humidity;
   html += " % </strong> </p></div>";
-  html += "<p> <strong>Buzzer component";
+  html += "<p> <strong>Test the warning buzzer ";
   html += "<a href=\"/setBuzzerStatus?s=0\" target=\"_blank\"\"\"><button>Turn Off </button></a>";
   html += "<a href=\"/setBuzzerStatus?s=1\" target=\"_blank\"\"\"><button>Turn On </button></a>";
-  
   html += "</body> </html>";
   
   server.send(200, "text/html", html);
@@ -245,19 +238,19 @@ void readTempHum(){
   int temporary = 0;
   temporary = dht.readTemperature();
   // this is the range of the DHT11 sensor. 
-  if(temporary >= 0 && temporary <=50){
+  if(temporary >= minMeasurableTemp && temporary <= maxMeasurableTemp){
     temperature = temporary;
   }
   temporary = dht.readHumidity();
-  if (temporary >= 0 && temporary <= 100){
+  if (temporary >= minMeasurableHum && temporary <= maxMeasurableHum){
     humidity = temporary;
   }  
-  Serial.print("temperature: ");
-  Serial.print(temperature);
-  Serial.print("\t");
-  Serial.print("humidity: ");
-  Serial.print(humidity);
-  Serial.print("\n");
+//  Serial.print("temperature: ");
+//  Serial.print(temperature);
+//  Serial.print("\t");
+//  Serial.print("humidity: ");
+//  Serial.print(humidity);
+//  Serial.print("\n");
 }
 
 void setLowSetTemp(){
@@ -359,23 +352,41 @@ void displayBootWelcomeMessage(){
   lcd.clear();
 }
 
+bool isTempWithinSpecifiedRange(){
+  if(temperature > highSetTemp || temperature < lowSetTemp){
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool isHumWithinSpecifiedRange(){
+  if(humidity > highSetHum || humidity < lowSetHum){
+    return false;
+  } else {
+    return true;
+  }
+}
+
 void trigBuzzerWhenOutsideSpecifiedRange(){
-  if((temperature > highSetTemp || temperature < lowSetTemp)&& !tempAlarmSignaled){
-    tone(buzzer_pin, 1000);  
-    delay(2000);
-    noTone(buzzer_pin);
+  if(!isTempWithinSpecifiedRange() && !tempAlarmSignaled){
+    soundWarningBuzzer();
     tempAlarmSignaled = true;
   }
-  if(tempAlarmSignaled && temperature <= highSetTemp && temperature >= lowSetTemp){
+  if(tempAlarmSignaled && isTempWithinSpecifiedRange()){
     tempAlarmSignaled = false;
   }
-  if((humidity > highSetHum || humidity < lowSetHum)&& !humAlarmSignaled){
-    tone(buzzer_pin, 1000);  
-    delay(2000);
-    noTone(buzzer_pin);
+  if(!isHumWithinSpecifiedRange() && !humAlarmSignaled){
+    soundWarningBuzzer();
     humAlarmSignaled = true;
   }
-  if(humAlarmSignaled && humidity <= highSetHum && humidity >= lowSetHum){
+  if(humAlarmSignaled && isHumWithinSpecifiedRange()){
     humAlarmSignaled = false;
   }
+}
+
+void soundWarningBuzzer(){
+  tone(buzzer_pin, 1000);  
+  delay(2000);
+  noTone(buzzer_pin);
 }
