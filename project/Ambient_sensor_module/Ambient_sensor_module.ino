@@ -243,6 +243,7 @@ void setBuzzerStatus(){
       delay(100);
     }
   }
+  get_index();
 }
 
 void readTempHum(){
