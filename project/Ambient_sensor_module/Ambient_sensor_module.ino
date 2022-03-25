@@ -49,7 +49,7 @@ int prefTemp = 3;
 int temperature = 0;
 int humidity = 0;
 
-int displayScreen = 0;
+int display_screen = 0;
 const String welcomeMessageLine1 = "Welcome to the";
 const String welcomeMessageLine2 = "Smart Pantry.";
 const String setLowTempMessage1 = "Set low temp:";
@@ -109,31 +109,26 @@ void loop() {
 
     //trigger the buzzer if either parameters are out of their specified range
     trigBuzzerWhenOutsideSpecifiedRange();
-    
+
+    //read the current value of the potentiometer    
     poteValue = analogRead(potentiometer_pin);
+    
+    //chose which display to show by the potentiometer position
     int displayValue = map(poteValue, 0, 1023, 0, 2);
-    if(displayValue != displayScreen){
+    //if the display to show is different from the last loop, clear the LCD screen and set the new value of the display
+    if(displayValue != display_screen){
       lcd.clear();
-      displayScreen = displayValue;
+      display_screen = displayValue;
     }
+    //if the display value is the first option, display the welcome message
     if(displayValue == 0){
       displayWelcomeMessage();
+    //esle display the current measurement values
     } else if(displayValue == 1){
       displayData();  
+    //else display the current set parameters
     } else {
-      lcd.print("LT: ");
-      lcd.print(lowSetTemp);
-      lcd.print("C, ");
-      lcd.print("HT: ");
-      lcd.print(highSetTemp);
-      lcd.print("C");
-      lcd.setCursor(0,1);
-      lcd.print("LH: ");
-      lcd.print(lowSetHum);
-      lcd.print("%, ");
-      lcd.print("HH: ");
-      lcd.print(highSetHum);
-      lcd.print("%");
+      displayParameterValues();
     }
   } else {
     poteValue = analogRead(potentiometer_pin);
@@ -286,6 +281,22 @@ void displayWelcomeMessage(){
   lcd.print(welcomeMessageLine1);  
   lcd.setCursor(0,1);
   lcd.print(welcomeMessageLine2);  
+}
+
+void displayParameterValues(){
+  lcd.print("LT: ");
+  lcd.print(lowSetTemp);
+  lcd.print("C, ");
+  lcd.print("HT: ");
+  lcd.print(highSetTemp);
+  lcd.print("C");
+  lcd.setCursor(0,1);
+  lcd.print("LH: ");
+  lcd.print(lowSetHum);
+  lcd.print("%, ");
+  lcd.print("HH: ");
+  lcd.print(highSetHum);
+  lcd.print("%");
 }
 
 void displaySetLowTempMessage(){
