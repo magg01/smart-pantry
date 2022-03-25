@@ -100,8 +100,10 @@ void loop() {
   // This keeps the server and serial monitor available 
   Serial.println("Server is running");
 
+  //always read the current value of the potentiometer    
+  poteValue = analogRead(potentiometer_pin);
+
   //is the position switch set to Set Mode or Monitor Mode
-  
   if(!isSetModeActive()){
     //if in monitor mode
     //read the temperature and humidity into their global variables
@@ -109,9 +111,6 @@ void loop() {
 
     //trigger the buzzer if either parameters are out of their specified range
     trigBuzzerWhenOutsideSpecifiedRange();
-
-    //read the current value of the potentiometer    
-    poteValue = analogRead(potentiometer_pin);
     
     //chose which display to show by the potentiometer position
     int displayValue = map(poteValue, 0, 1023, 0, 2);
@@ -130,35 +129,20 @@ void loop() {
     } else {
       displayParameterValues();
     }
+  //if monitor mode is chosen by the switch position
   } else {
-    poteValue = analogRead(potentiometer_pin);
+    //
     if(push_button_count_value == 0){
-      int prevLowSetTemp = lowSetTemp;
-      lowSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
-      if (lowSetTemp != prevLowSetTemp){
-        lcd.clear();
-      }
+      setLowSetTemp();
       displaySetParameterMessage(setLowTempMessage1, &lowSetTemp, "C");
     } else if(push_button_count_value == 1){
-      int prevHighSetTemp = highSetTemp;
-      highSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
-      if (highSetTemp != prevHighSetTemp){
-        lcd.clear();
-      }
+      setHighSetTemp();
       displaySetParameterMessage(setHighTempMessage1, &highSetTemp, "C");
     } else if(push_button_count_value == 2){
-      int prevLowSetHum = lowSetHum;
-      lowSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
-      if (lowSetHum != prevLowSetHum){
-        lcd.clear();
-      }
+      setLowSetHum();
       displaySetParameterMessage(setLowHumMessage1, &lowSetHum, "%");
     } else {
-      int prevHighSetHum = highSetHum;
-      highSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
-      if (highSetHum != prevHighSetHum){
-        lcd.clear();
-      }
+      setHighSetHum();
       displaySetParameterMessage(setHighHumMessage1, &highSetHum, "%");
     }
 
@@ -259,6 +243,38 @@ void readTempHum(){
   Serial.print("humidity: ");
   Serial.print(humidity);
   Serial.print("\n");
+}
+
+void setLowSetTemp(){
+  int prevLowSetTemp = lowSetTemp;
+  lowSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
+  if (lowSetTemp != prevLowSetTemp){
+    lcd.clear();
+  }
+}
+
+void setHighSetTemp(){
+  int prevHighSetTemp = highSetTemp;
+  highSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, maxMeasurableTemp);
+  if (highSetTemp != prevHighSetTemp){
+    lcd.clear();
+  }
+}
+
+void setLowSetHum(){
+  int prevLowSetHum = lowSetHum;
+  lowSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
+  if (lowSetHum != prevLowSetHum){
+    lcd.clear();
+  }
+}
+
+void setHighSetHum(){
+  int prevHighSetHum = highSetHum;
+  highSetHum = map(poteValue, 1023, 0, minMeasurableHum, maxMeasurableHum);
+  if (highSetHum != prevHighSetHum){
+    lcd.clear();
+  }
 }
 
 void displayData(){
