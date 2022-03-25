@@ -12,6 +12,8 @@ const int switch_pin = D0;
 int switch_value;
 
 const int led_pin = D2;
+const int pir_sensor_pin = D8;
+int pir_sensor_value;
 const int push_button_pin = D7;
 int push_button_value;
 int push_button_count_value = 0;
@@ -50,8 +52,12 @@ int temperature = 0;
 int humidity = 0;
 
 int display_screen = 0;
-const String welcomeMessageLine1 = "Welcome to the";
-const String welcomeMessageLine2 = "Smart Pantry.";
+const String welcome_message_line1 = "Welcome to the";
+const String welcome_message_line2 = "Smart Pantry.";
+const String welcome_message_line3 = "Put this sensor";
+const String welcome_message_line4 = "module where...";
+const String welcome_message_line5 = "you store your ";
+const String welcome_message_line6 = "perishalbes.";
 const String setLowTempMessage1 = "Set low temp:";
 const String setHighTempMessage1 = "Set high temp:";
 const String setLowHumMessage1 = "Set low humid:";
@@ -68,6 +74,7 @@ void setup() {
   pinMode(led_pin, OUTPUT);
   pinMode(buzzer_pin, OUTPUT);
   pinMode(push_button_pin, INPUT);
+  pinMode(pir_sensor_pin, INPUT);
   digitalWrite(buzzer_pin, LOW);
 
   WiFi.begin(ssid, password);
@@ -93,6 +100,8 @@ void setup() {
 
   lcd.init();
   lcd.backlight();
+
+  displayBootWelcomeMessage();
 }
 
 void loop() {
@@ -101,6 +110,15 @@ void loop() {
 
   // This keeps the server and serial monitor available 
   Serial.println("Server is running");
+
+  pir_sensor_value = digitalRead(pir_sensor_pin);
+  if(pir_sensor_value == 1){
+    lcd.display();
+    lcd.backlight();
+  } else {
+    lcd.noDisplay();
+    lcd.noBacklight();
+  }
 
   //always read the current value of the potentiometer    
   poteValue = analogRead(potentiometer_pin);
@@ -115,17 +133,14 @@ void loop() {
     trigBuzzerWhenOutsideSpecifiedRange();
     
     //chose which display to show by the potentiometer position
-    int displayValue = map(poteValue, 0, 1023, 0, 2);
+    int displayValue = map(poteValue, 0, 1023, 0, 1);
     //if the display to show is different from the last loop, clear the LCD screen and set the new value of the display
     if(displayValue != display_screen){
       lcd.clear();
       display_screen = displayValue;
     }
-    //if the display value is the first option, display the welcome message
+    //display the current measurement values
     if(displayValue == 0){
-      displayWelcomeMessage();
-    //esle display the current measurement values
-    } else if(displayValue == 1){
       displayData();  
     //else display the current set parameters
     } else {
@@ -162,8 +177,6 @@ void loop() {
       }
     }
   }
-  //Include a short delay to make the interaction less jittery
-//  delay(100);
 }
 
 bool isSetModeActive(){
@@ -294,13 +307,6 @@ void displayData(){
   lcd.print(humMessage );
 }
 
-void displayWelcomeMessage(){
-  lcd.setCursor(0,0);
-  lcd.print(welcomeMessageLine1);  
-  lcd.setCursor(0,1);
-  lcd.print(welcomeMessageLine2);  
-}
-
 void displayParameterValues(){
   lcd.print("LT: ");
   lcd.print(lowSetTemp);
@@ -330,6 +336,27 @@ void displaySaveParametersMessage(){
   lcd.print(save_parameters_message_line1);
   lcd.setCursor(0,1);
   lcd.print(save_parameters_message_line2);
+}
+
+void displayBootWelcomeMessage(){
+  lcd.setCursor(0,0);
+  lcd.print(welcome_message_line1);  
+  lcd.setCursor(0,1);
+  lcd.print(welcome_message_line2); 
+  delay(5000);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(welcome_message_line3);
+  lcd.setCursor(0,1);
+  lcd.print(welcome_message_line4);
+  delay(5000);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(welcome_message_line5);
+  lcd.setCursor(0,1);
+  lcd.print(welcome_message_line6);
+  delay(5000);
+  lcd.clear();
 }
 
 void trigBuzzerWhenOutsideSpecifiedRange(){
