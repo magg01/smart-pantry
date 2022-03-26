@@ -105,7 +105,7 @@ void setup() {
 
   
   for(int i = 0; i < numAvailableFoods ; i++){
-    JsonObject obj = foodstuffs.createNestedObject(availableFoods[i]);
+    JsonObject obj = foodstuffs.createNestedObject(availableFoods[i][0]);
     obj["name"] = availableFoods[i][0];
     if(i % 2 == 0){
       obj["present"] = true;  
