@@ -379,7 +379,21 @@ void get_index(){
   html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
   html += "<body> <h1>The Smart Pantry Check-in/out Module Dashboard</h1>";
   html += "<p>Welcome to the Smart Pantry dashboard</p>";
-  html += "<div><p>Hello, World!</p></div>";
+  html += "<h2>Pantry contents</h2>";
+  html += "<table>";
+  html += "<th>Foodstuff</th><th>Days in pantry</th><th>Days until spoilage</th>";
+  for(int i = 0; i < numAvailableFoods -1; i++){
+    if(foodstuffs[availableFoods[i][0]]["present"].as<bool>()){
+      String daysSinceEntered = String(getDaysSinceEnteredForFoodstuff(availableFoods[i][0]));
+      String daysRemaining = String(getDaysRemainingForFoodstuff(availableFoods[i][0]));
+      html += "<tr>";
+      html += "<td>" + availableFoods[i][0] + "</td>";
+      html += "<td>" + daysSinceEntered + "</td>";
+      html += "<td>" + daysRemaining + "</td>";
+      html += "</tr>";
+    }
+  }
+  html += "</table>";
   html += "</body> </html>";
   server.send(200, "text/html", html);
 }
