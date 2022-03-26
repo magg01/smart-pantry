@@ -107,7 +107,7 @@ void loop(){
     getAmbientSensorModuleDataJson();
     setGlobalConditionsVariablesFromJson();
     displayAmbientSensorModuleCurrentConditions();
-    delayWithModeChecking();
+    delayWithModeChecking(10);
   } else if(displayValue == 1){
     display.clearDisplay();
     display.setTextSize(1);
@@ -235,8 +235,8 @@ bool isMonitorModeActive(){
 //the Switch position away from monitor mode.
 //Allows us not to poll the server too often while 
 //maintaining responsiveness
-void delayWithModeChecking(){
-  for(int i = 10; i > 0; i--){
+void delayWithModeChecking(int waitSeconds){
+  for(int i = waitSeconds; i > 0; i--){
     delay(1000);
     if(!isMonitorModeActive()){
       break;
