@@ -15,6 +15,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 const char* ssid = "FRITZ!Box 7590 XO";
 const char* password = "96087252974805885212";
 
+const int potentiometer_pin = A0;
+int poteValue;
+
 //
 const char* host = "192.168.178.71";
 
@@ -34,6 +37,8 @@ int humSensorHighParameter;
 int humSensorOutOfRangeEvents;
 
 void setup() {
+  pinMode(potentiometer_pin, INPUT);
+  
   // Initialize Serial port
   Serial.begin(9600);
   while (!Serial) continue;
@@ -66,10 +71,22 @@ void setup() {
 }
 
 void loop(){
-  getAmbientSensorModuleDataJson();
-  setGlobalConditionsVariablesFromJson();
-  displayAmbientSensorModuleCurrentConditions();  
-  delay(5000);
+  poteValue = analogRead(potentiometer_pin);
+  int displayValue = map(poteValue, 1024, 0, 0, 1);
+  if(displayValue == 0){
+    getAmbientSensorModuleDataJson();
+    setGlobalConditionsVariablesFromJson();
+    displayAmbientSensorModuleCurrentConditions();    
+  } else {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    display.print("pote: ");
+    display.println(poteValue);
+    display.display();
+  }
+  
+  delay(1000);
 }
 
 void getAmbientSensorModuleDataJson(){
