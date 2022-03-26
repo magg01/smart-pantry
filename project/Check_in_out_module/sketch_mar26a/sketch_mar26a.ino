@@ -26,12 +26,17 @@ const int push_button_pin2 = D6;
 int push_button_value2;
 int push_button_count_value2 = 0;
 
-//
+const int switch_pin = D0;
+int switch_value;
+
 const char* host = "192.168.178.71";
+
+StaticJsonDocument<512> foodStuffs;
+
 
 WiFiClient client;
 HTTPClient http;
-DynamicJsonDocument doc(1024);
+StaticJsonDocument<512> doc;
 
 int tempSensorValue;
 bool tempSensorInRange;
@@ -48,6 +53,7 @@ void setup() {
   pinMode(potentiometer_pin, INPUT);
   pinMode(push_button_pin1, INPUT);
   pinMode(push_button_pin2, INPUT);
+  pinMode(switch_pin, INPUT);
   
   // Initialize Serial port
   Serial.begin(9600);
@@ -78,17 +84,31 @@ void setup() {
     Serial.println("Waiting to connect...");
   }
   Serial.println("Connected!");
+
+  
+  JsonObject apples = foodStuffs.createNestedObject("apples");
+  apples["present"] = true;
+  apples["dateBought"] = "26.03.22";
+  apples["goodForDays"] = 7;
+  
+  JsonObject bananas = foodStuffs.createNestedObject("bananas");
+  bananas["present"] = true;
+  bananas["dateBought"] = "23.03.22";
+  bananas["goodForDays"] = 5;
+
+  String output;
+  serializeJson(foodStuffs, output);
 }
 
 void loop(){
   poteValue = analogRead(potentiometer_pin);
-  int displayValue = map(poteValue, 1024, 0, 0, 1);
-  if(displayValue == 0){
+  int displayValue = map(poteValue, 1023, 0, 0, 2);
+  if(isMonitorModeActive()){
     getAmbientSensorModuleDataJson();
     setGlobalConditionsVariablesFromJson();
     displayAmbientSensorModuleCurrentConditions();
-    delay(1000);
-  } else {
+    delayWithModeChecking();
+  } else if(displayValue == 1){
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0,0);
@@ -97,12 +117,22 @@ void loop(){
     display.print("count2: ");
     display.println(push_button_count_value2);
     display.display();
+  } else {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    display.print("foodstuff here");
+    display.display();
   }
   
   int prevPushButtonValue1 = push_button_value1;
   if(isPushButtonPressed1()){
     if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-      push_button_count_value1++;
+      if(push_button_count_value1 > 1){
+        push_button_count_value1 = 0;  
+      } else {
+        push_button_count_value1++;
+      }
     }
   }  
   int prevPushButtonValue2 = push_button_value2;
@@ -184,4 +214,32 @@ bool isPushButtonPressed2(){
     return true;
   }
   return false;
+}
+
+bool isMonitorModeActive(){
+  bool prevSwitchValue = switch_value;
+  switch_value = digitalRead(switch_pin);
+  if(prevSwitchValue != switch_value){
+    display.clearDisplay();
+    display.println("loading...");
+    display.display();
+  }
+  if (switch_value == 0){
+    return false;
+  }
+  return true;
+}
+
+//delay the polling of the server for 10 seconds 
+//but check every second if the user has changed 
+//the Switch position away from monitor mode.
+//Allows us not to poll the server too often while 
+//maintaining responsiveness
+void delayWithModeChecking(){
+  for(int i = 10; i > 0; i--){
+    delay(1000);
+    if(!isMonitorModeActive()){
+      break;
+    }
+  }
 }
