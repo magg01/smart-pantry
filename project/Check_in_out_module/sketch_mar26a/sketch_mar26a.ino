@@ -31,8 +31,8 @@ int switch_value;
 
 const char* host = "192.168.178.71";
 
-const String availableFoods[2] = {"apples", "bananas"};
-const int numAvailableFoods = 2;
+const int numAvailableFoods = 5;
+const String availableFoods[numAvailableFoods] = {"apples", "bananas", "brocolli", "cherries", "grapes"};
 StaticJsonDocument<512> foodstuffs;
 
 WiFiClient client;
@@ -86,17 +86,29 @@ void setup() {
   }
   Serial.println("Connected!");
 
-  JsonObject apples = foodstuffs.createNestedObject("apples");
-  apples["name"] = "apples";
-  apples["present"] = true;
-  apples["dateBought"] = "26.03.22";
-  apples["goodForDays"] = 7;
-  
-  JsonObject bananas = foodstuffs.createNestedObject("bananas");
-  bananas["name"] = "bananas";
-  bananas["present"] = true;
-  bananas["dateBought"] = "23.03.22";
-  bananas["goodForDays"] = 5;
+  for(int i = 0; i < numAvailableFoods ; i++){
+    JsonObject obj = foodstuffs.createNestedObject(availableFoods[i]);
+    obj["name"] = availableFoods[i];
+    if(i % 2 == 0){
+      obj["present"] = true;  
+    } else {
+      obj["present"] = false;  
+    }
+    obj["dateBought"] = NULL;
+    obj["goodForDays"] = 3;
+  }
+
+//  JsonObject apples = foodstuffs.createNestedObject("apples");
+//  apples["name"] = "apples";
+//  apples["present"] = true;
+//  apples["dateBought"] = "26.03.22";
+//  apples["goodForDays"] = 7;
+//  
+//  JsonObject bananas = foodstuffs.createNestedObject("bananas");
+//  bananas["name"] = "bananas";
+//  bananas["present"] = true;
+//  bananas["dateBought"] = "23.03.22";
+//  bananas["goodForDays"] = 5;
 
   String output;
   serializeJson(foodstuffs, output);
@@ -122,16 +134,19 @@ void loop(){
 //    display.display();
   } else {
     display.clearDisplay();
-    display.setTextSize(1);
     display.setCursor(0,0);
+    display.setTextSize(2);
     display.println(foodstuffs[availableFoods[foodToDisplay]]["name"].as<String>());
+    display.setTextSize(1);
     display.print("In pantry: ");
     display.println(foodstuffs[availableFoods[foodToDisplay]]["present"].as<String>());
-    display.print("Date bought: ");
-    display.println(foodstuffs[availableFoods[foodToDisplay]]["dateBought"].as<String>());
-    display.print("Good for: ");
-    display.print(foodstuffs[availableFoods[foodToDisplay]]["goodForDays"].as<String>());
-    display.print(" days");
+    if(foodstuffs[availableFoods[foodToDisplay]]["present"].as<bool>()){
+      display.print("Date bought: ");
+      display.println(foodstuffs[availableFoods[foodToDisplay]]["dateBought"].as<String>());
+      display.print("Good for: ");
+      display.print(foodstuffs[availableFoods[foodToDisplay]]["goodForDays"].as<String>());
+      display.print(" days");  
+    }
     display.display();
   }
   
