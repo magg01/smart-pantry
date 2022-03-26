@@ -304,7 +304,7 @@ void displayEatTomorrowItems(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(1);
-  display.println("Eat tomorrow:");
+  display.println("Eat by tomorrow:");
   display.setCursor(0,16);
   for(int i = 0; i < numAvailableFoods; i++){
     if(foodstuffs[availableFoods[i][0]]["present"]){
