@@ -49,7 +49,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
   // Display static text
-  display.println("Hello, world!");
+  display.println("Welcome! Smart Pantry");
   display.display();
   
   
@@ -96,7 +96,6 @@ void setGlobalConditionsVariablesFromJson(){
 
 void displayAmbientSensorModuleCurrentConditions(){
   display.clearDisplay();
-  display.setTextSize(1);
   display.setCursor(0,0);
   display.println("Storage conditions");
   display.setCursor(0,16);
