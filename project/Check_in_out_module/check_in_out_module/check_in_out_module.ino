@@ -87,6 +87,7 @@ void setup() {
 
   //set the server routes
   server.on("/", get_index);
+  server.on("/json/pantry", get_pantry_json);
   //initialise the web server
   server.begin();
   
@@ -381,15 +382,15 @@ void get_index(){
   html += "<p>Welcome to the Smart Pantry dashboard</p>";
   html += "<h2>Pantry contents</h2>";
   html += "<table>";
-  html += "<th>Foodstuff</th><th>Days in pantry</th><th>Days until spoilage</th>";
-  for(int i = 0; i < numAvailableFoods -1; i++){
+  html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Days in pantry</th><th style=\"border-bottom: 2px solid black;\">Days until spoilage</th>";
+  for(int i = 0; i < numAvailableFoods; i++){
     if(foodstuffs[availableFoods[i][0]]["present"].as<bool>()){
       String daysSinceEntered = String(getDaysSinceEnteredForFoodstuff(availableFoods[i][0]));
       String daysRemaining = String(getDaysRemainingForFoodstuff(availableFoods[i][0]));
       html += "<tr>";
-      html += "<td>" + availableFoods[i][0] + "</td>";
-      html += "<td>" + daysSinceEntered + "</td>";
-      html += "<td>" + daysRemaining + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + availableFoods[i][0] + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + daysSinceEntered + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + daysRemaining + "</td>";
       html += "</tr>";
     }
   }
@@ -397,3 +398,20 @@ void get_index(){
   html += "</body> </html>";
   server.send(200, "text/html", html);
 }
+
+//json pantry contents
+void get_pantry_json(){
+  String jsonStr;  
+  serializeJsonPretty(foodstuffs, jsonStr);    
+  server.send(200, "application/json", jsonStr);
+}
+
+//void get_pantry_json(){
+//  String jsonStr;
+//  for(int i = 0; i < numAvailableFoods; i++){
+//    if(foodstuffs[availableFoods[i][0]]["present"].as<bool>()){
+//      serializeJsonPretty(foodstuffs[availableFoods[i][0]], jsonStr);    
+//    }
+//  }
+//  server.send(200, "application/json", jsonStr);
+//}
