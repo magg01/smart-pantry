@@ -249,8 +249,10 @@ bool isMonitorModeActive(){
   switch_value = digitalRead(switch_pin);
   if(prevSwitchValue != switch_value){
     display.clearDisplay();
+    display.display();
     if(switch_value == 1){
       display.setCursor(0,0);
+      display.setTextSize(1);
       display.println("Storage conditions"); 
       display.setCursor(0, 16);
       display.println("loading...");
