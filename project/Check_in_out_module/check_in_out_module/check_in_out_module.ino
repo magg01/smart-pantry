@@ -7,6 +7,7 @@
 #include <ESP8266HTTPClient.h>
 #include <NTPClient.h>
 #include <WifiUdp.h>
+#include <ESP8266WebServer.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -14,6 +15,8 @@
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
+// set the port for the web server
+ESP8266WebServer server(80);
 //WiFi connection
 const char* ssid = "FRITZ!Box 7590 XO";
 const char* password = "96087252974805885212";
@@ -52,6 +55,8 @@ StaticJsonDocument<512> doc;
 
 int numScreensInMonitorMode = 3;
 
+bool displayIpAddress = false;
+
 int tempSensorValue;
 bool tempSensorInRange;
 int tempSensorLowParameter;
@@ -80,6 +85,11 @@ void setup() {
   //initialise the fileSystem
   LittleFS.begin();
 
+  //set the server routes
+  server.on("/", get_index);
+  //initialise the web server
+  server.begin();
+  
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
@@ -122,7 +132,9 @@ void setup() {
 void loop(){
   timeClient.update();
   epochTime = timeClient.getEpochTime();
-  
+  server.handleClient();
+  // This keeps the server and serial monitor available 
+  Serial.println("Server is running");
   poteValue = analogRead(potentiometer_pin);
   int currentFood = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
 //  int displayValue = map(poteValue, 1023, 0, 0, 1);
@@ -212,7 +224,7 @@ void displayAmbientSensorModuleCurrentConditions(){
       display.println(" - too high!");  
     }
   }
-  display.setCursor(0,30);
+  display.setCursor(0,32);
   display.print("H: ");
   display.print(humSensorValue);
   display.print("%");
@@ -266,10 +278,11 @@ bool isMonitorModeActive(){
 }
 
 //delay the polling of the server for 10 seconds 
-//but check every second if the user has changed 
-//the Switch position away from monitor mode.
+//but check every 1/10th second if the user has changed 
+//the Switch position away from monitor mode, or pushed a
+//button. Also keeps the server handling requests.
 //Allows us not to poll the server too often while 
-//maintaining responsiveness
+//maintaining responsiveness.
 void delayWithResponsiveButtons(int waitSeconds){
   for(int i = waitSeconds * 10; i > 0; i--){
     delay(100);
@@ -280,6 +293,13 @@ void delayWithResponsiveButtons(int waitSeconds){
       cycleScreens();
       break;
     }
+    if(checkForButton2Press()){
+      display.setCursor(0,48);
+      display.print("IP: ");
+      display.print(WiFi.localIP().toString());
+      display.display();
+    }
+    server.handleClient();
   }
 }
 
@@ -323,7 +343,7 @@ int getDaysRemainingForFoodstuff(String foodstuffName){
 }
 
 int getDaysSinceEnteredForFoodstuff(String foodstuffName){ 
-  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86399 * 3; //simulate almost three days later
+  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86400 * 3 - 3; //simulate almost three days later
   return secondsSinceEntered / 60 / 60 / 24;
 }
 
@@ -337,10 +357,29 @@ bool checkForButton1Press(){
   return false;
 }
 
+bool checkForButton2Press(){
+  if(isPushButtonPressed2()){
+    return true;
+  }
+  return false;
+}
+
 void cycleScreens(){
   if(push_button_count_value1 == numScreensInMonitorMode - 1){
     push_button_count_value1 = 0;
   } else {
     push_button_count_value1++;
   }
+}
+
+///////////////////web server routes//////////////////////
+//index
+void get_index(){
+  String html = "<!DOCTYPE html> <html>";
+  html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
+  html += "<body> <h1>The Smart Pantry Check-in/out Module Dashboard</h1>";
+  html += "<p>Welcome to the Smart Pantry dashboard</p>";
+  html += "<div><p>Hello, World!</p></div>";
+  html += "</body> </html>";
+  server.send(200, "text/html", html);
 }
