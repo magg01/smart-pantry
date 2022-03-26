@@ -29,10 +29,12 @@ int poteValue;
 //initialise the buzzer pin
 const int buzzer_pin = D5;
 bool tempAlarmSignaled = false;
+int countTempAlarm = 0;
 
 //initialise the temperature and humidity pin
 const int temp_hum_pin = D6;
 bool humAlarmSignaled = false;
+int countHumAlarm = 0;
 
 //initialise the DHT11 component
 DHT dht(temp_hum_pin, DHT11);
@@ -397,6 +399,7 @@ bool isHumWithinSpecifiedRange(){
 void trigBuzzerWhenOutsideSpecifiedRange(){
   if(!isTempWithinSpecifiedRange() && !tempAlarmSignaled){
     soundWarningBuzzer();
+    countTempAlarm++;
     tempAlarmSignaled = true;
   }
   if(tempAlarmSignaled && isTempWithinSpecifiedRange()){
@@ -404,6 +407,7 @@ void trigBuzzerWhenOutsideSpecifiedRange(){
   }
   if(!isHumWithinSpecifiedRange() && !humAlarmSignaled){
     soundWarningBuzzer();
+    countHumAlarm++;
     humAlarmSignaled = true;
   }
   if(humAlarmSignaled && isHumWithinSpecifiedRange()){
@@ -427,10 +431,16 @@ void getSensorJsonData(){
   tempDHT11["sensorName"] = "DHT11";
   tempDHT11["sensorValue"] = temperature;
   tempDHT11["inRange"] = isTempWithinSpecifiedRange();
+  tempDHT11["lowParameter"] = lowSetTemp;
+  tempDHT11["highParameter"] = highSetTemp;
+  tempDHT11["outOfRangeEvents"] = countTempAlarm;
   JsonObject humDHT11 = doc.createNestedObject("humidity sensor");
   humDHT11["sensorName"] = "DHT11";
   humDHT11["sensorValue"] = humidity;
   humDHT11["inRange"] = isHumWithinSpecifiedRange();
+  humDHT11["lowParameter"] = lowSetHum;
+  humDHT11["highParameter"] = highSetHum;
+  humDHT11["outOfRangeEvents"] = countHumAlarm;
 
   String jsonStr;
   serializeJsonPretty(doc, jsonStr);
