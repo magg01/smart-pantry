@@ -18,6 +18,14 @@ const char* password = "96087252974805885212";
 const int potentiometer_pin = A0;
 int poteValue;
 
+const int push_button_pin1 = D7;
+int push_button_value1;
+int push_button_count_value1 = 0;
+
+const int push_button_pin2 = D6;
+int push_button_value2;
+int push_button_count_value2 = 0;
+
 //
 const char* host = "192.168.178.71";
 
@@ -38,6 +46,8 @@ int humSensorOutOfRangeEvents;
 
 void setup() {
   pinMode(potentiometer_pin, INPUT);
+  pinMode(push_button_pin1, INPUT);
+  pinMode(push_button_pin2, INPUT);
   
   // Initialize Serial port
   Serial.begin(9600);
@@ -76,17 +86,31 @@ void loop(){
   if(displayValue == 0){
     getAmbientSensorModuleDataJson();
     setGlobalConditionsVariablesFromJson();
-    displayAmbientSensorModuleCurrentConditions();    
+    displayAmbientSensorModuleCurrentConditions();
+    delay(1000);
   } else {
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0,0);
-    display.print("pote: ");
-    display.println(poteValue);
+    display.print("count1: ");
+    display.println(push_button_count_value1);
+    display.print("count2: ");
+    display.println(push_button_count_value2);
     display.display();
   }
   
-  delay(1000);
+  int prevPushButtonValue1 = push_button_value1;
+  if(isPushButtonPressed1()){
+    if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+      push_button_count_value1++;
+    }
+  }  
+  int prevPushButtonValue2 = push_button_value2;
+  if(isPushButtonPressed2()){
+    if(prevPushButtonValue2 != push_button_value2 && push_button_value2 == 1){
+      push_button_count_value2++;
+    }
+  }  
 }
 
 void getAmbientSensorModuleDataJson(){
@@ -144,4 +168,20 @@ void displayAmbientSensorModuleCurrentConditions(){
     }
   }
   display.display();
+}
+
+bool isPushButtonPressed1(){
+  push_button_value1 = digitalRead(push_button_pin1);
+  if (push_button_value1 == 1){
+    return true;
+  }
+  return false;
+}
+
+bool isPushButtonPressed2(){
+  push_button_value2 = digitalRead(push_button_pin2);
+  if (push_button_value2 == 1){
+    return true;
+  }
+  return false;
 }
