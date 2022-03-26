@@ -383,8 +383,10 @@ void get_index(){
   html += "<h2>Pantry contents</h2>";
   html += "<table>";
   html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Days in pantry</th><th style=\"border-bottom: 2px solid black;\">Days until spoilage</th>";
+  int presentCount = 0;
   for(int i = 0; i < numAvailableFoods; i++){
     if(foodstuffs[availableFoods[i][0]]["present"].as<bool>()){
+      presentCount++;
       String daysSinceEntered = String(getDaysSinceEnteredForFoodstuff(availableFoods[i][0]));
       String daysRemaining = String(getDaysRemainingForFoodstuff(availableFoods[i][0]));
       html += "<tr>";
@@ -395,6 +397,9 @@ void get_index(){
     }
   }
   html += "</table>";
+  if(presentCount == 0){
+    html += "<p>There is nothing in the Pantry</p>";
+  }
   html += "</body> </html>";
   server.send(200, "text/html", html);
 }
@@ -405,13 +410,3 @@ void get_pantry_json(){
   serializeJsonPretty(foodstuffs, jsonStr);    
   server.send(200, "application/json", jsonStr);
 }
-
-//void get_pantry_json(){
-//  String jsonStr;
-//  for(int i = 0; i < numAvailableFoods; i++){
-//    if(foodstuffs[availableFoods[i][0]]["present"].as<bool>()){
-//      serializeJsonPretty(foodstuffs[availableFoods[i][0]], jsonStr);    
-//    }
-//  }
-//  server.send(200, "application/json", jsonStr);
-//}
