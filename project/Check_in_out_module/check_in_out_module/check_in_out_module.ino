@@ -39,10 +39,10 @@ int switch_value;
 
 const char* host = "192.168.178.71";
 
-const int numAvailableFoods = 10;
+const int numAvailableFoods = 11;
 const String availableFoods[numAvailableFoods][2] = {
   {"Apples", "6"}, {"Bananas", "4"}, {"Blueberry", "3"}, {"Brocolli", "6"}, {"Cauliflwr", "6"}, {"Cherries", "3"}, 
-  {"Grapes", "5"}, {"Potatoes", "7"}, {"Onions", "14"}, {"Oranges", "6"}
+  {"Grapes", "5"}, {"Potatoes", "7"}, {"Onions", "14"}, {"Oranges", "6"}, {"LeftOvers", "2"}
 };
 StaticJsonDocument<4000> foodstuffs;
 
