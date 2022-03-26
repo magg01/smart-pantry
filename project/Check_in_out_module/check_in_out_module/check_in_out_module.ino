@@ -398,7 +398,7 @@ void get_index(){
   }
   html += "</table>";
   if(presentCount == 0){
-    html += "<p>There is nothing in the Pantry</p>";
+    html += "<p>The Pantry is empty!</p>";
   }
   html += "</body> </html>";
   server.send(200, "text/html", html);
