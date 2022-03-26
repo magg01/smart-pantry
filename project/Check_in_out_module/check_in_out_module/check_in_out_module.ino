@@ -129,10 +129,14 @@ void loop(){
   if(isMonitorModeActive()){
     if(push_button_count_value1 == 0){
       displayEatTodayItems();
-      checkForButton1Press();
+      if(checkForButton1Press()){
+        cycleScreens();
+      }
     } else if(push_button_count_value1 == 1){
       displayEatTomorrowItems();
-      checkForButton1Press();
+      if(checkForButton1Press()){
+        cycleScreens();
+      }
     } else if (push_button_count_value1 == 2){
       getAmbientSensorModuleDataJson();
       setGlobalConditionsVariablesFromJson();
@@ -273,6 +277,7 @@ void delayWithResponsiveButtons(int waitSeconds){
       break;
     }
     if(checkForButton1Press()){
+      cycleScreens();
       break;
     }
   }
@@ -300,7 +305,7 @@ void displayEatTomorrowItems(){
   display.setCursor(0,0);
   display.setTextSize(1);
   display.println("Eat tomorrow:");
-  display.setTextSize(1);
+  display.setCursor(0,16);
   for(int i = 0; i < numAvailableFoods; i++){
     if(foodstuffs[availableFoods[i][0]]["present"]){
       if(getDaysRemainingForFoodstuff(availableFoods[i][0]) == 1){
@@ -326,13 +331,16 @@ bool checkForButton1Press(){
   int prevPushButtonValue1 = push_button_value1;
   if(isPushButtonPressed1()){
     if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-     if(push_button_count_value1 == numScreensInMonitorMode - 1){
-        push_button_count_value1 = 0;
-      } else {
-        push_button_count_value1++;
-      }
       return true;
     }
   }
   return false;
+}
+
+void cycleScreens(){
+  if(push_button_count_value1 == numScreensInMonitorMode - 1){
+    push_button_count_value1 = 0;
+  } else {
+    push_button_count_value1++;
+  }
 }
