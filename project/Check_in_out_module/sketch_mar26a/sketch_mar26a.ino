@@ -4,7 +4,6 @@
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <SPI.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -19,6 +18,20 @@ const char* password = "96087252974805885212";
 //
 const char* host = "192.168.178.71";
 
+WiFiClient client;
+HTTPClient http;
+DynamicJsonDocument doc(1024);
+
+int tempSensorValue;
+bool tempSensorInRange;
+int tempSensorLowParameter;
+int tempSensorHighParameter;
+int tempSensorOutOfRangeEvents;
+int humSensorValue;
+bool humSensorInRange;
+int humSensorLowParameter;
+int humSensorHighParameter;
+int humSensorOutOfRangeEvents;
 
 void setup() {
   // Initialize Serial port
@@ -52,71 +65,65 @@ void setup() {
 }
 
 void loop(){
-  Serial.println("I'm here1");
-  WiFiClient client;
-  HTTPClient http;
-  Serial.println("I'm here2");
-//  Serial.printf("\n[Connecting to %s ... ", host);
-//  if (client.connect(host, 80))
-//  {
-//    Serial.println("connected]");
-//
-//    Serial.println("[Sending a request]");
-//    client.print(String("GET /json/sensors") + " HTTP/1.1\r\n" +
-//                 "Host: " + host + "\r\n" +
-//                 "Connection: close\r\n" +
-//                 "\r\n"
-//                );
-//
-//    Serial.println("[Response:]");
-//    while (client.connected() || client.available())
-//    {
-//      if (client.available())
-//      {
-//        String line = client.readStringUntil('\n');
-//        Serial.println(line);
-//      }
-//    }
-    http.useHTTP10(true);
-    http.begin(client, "http://192.168.178.71/json/sensors");
-    Serial.println("I'm here3");
-    http.GET();
-    Serial.println("I'm here4");
-    DynamicJsonDocument doc(1024);
-    Serial.println("I'm here5");
-    deserializeJson(doc, http.getStream());       
-    Serial.println("I'm here6");
-    Serial.println(doc["temperature sensor"].as<String>());
-    Serial.println(doc["temperature sensor"]["sensorValue"].as<String>());
-    Serial.println(doc["humidity sensor"].as<String>());
-    http.end();    
-    delay(5000);
-//    
-//    // Allocate the JSON document
-//    DynamicJsonDocument doc(1024);
-//  
-//    // Parse JSON object
-//    DeserializationError error = deserializeJson(doc, client);
-//    if (error) {
-//      Serial.print(F("deserializeJson() failed: "));
-//      Serial.println(error.f_str());
-//      client.stop();
-//      return;
-//    }
-  
-//    // Extract values
-//    Serial.println(F("Response:"));
-//    Serial.println(doc["temperature sensor"].as<char*>());
-//    Serial.println(doc["humidity sensor"].as<char*>());
-    
-//    client.stop();
-//    Serial.println("\n[Disconnected]");
-    
-//  }
-//  else
-//  {
-//    Serial.println("connection failed!]");
-//    client.stop();
-//  }
-//  delay(5000);
+  getAmbientSensorModuleDataJson();
+  setGlobalConditionsVariablesFromJson();
+  displayAmbientSensorModuleCurrentConditions();  
+  delay(5000);
+}
+
+void getAmbientSensorModuleDataJson(){
+  http.useHTTP10(true);
+  http.begin(client, "http://192.168.178.71/json/sensors");
+  http.GET();
+  deserializeJson(doc, http.getStream());
+  Serial.println(doc["temperature sensor"].as<String>());
+  Serial.println(doc["humidity sensor"].as<String>());
+  http.end();
+}
+
+void setGlobalConditionsVariablesFromJson(){
+  tempSensorValue = doc["temperature sensor"]["sensorValue"].as<int>();
+  tempSensorInRange = doc["temperature sensor"]["inRange"].as<bool>();
+  tempSensorLowParameter = doc["temperature sensor"]["lowParameter"].as<int>();
+  tempSensorHighParameter = doc["temperature sensor"]["highParameter"].as<int>();
+  tempSensorOutOfRangeEvents = doc["temperature sensor"]["outOfRangeEvents"].as<int>();
+  humSensorValue = doc["humidity sensor"]["sensorValue"].as<int>();
+  humSensorInRange = doc["humidity sensor"]["inRange"].as<bool>();
+  humSensorLowParameter = doc["humidity sensor"]["lowParameter"].as<int>();
+  humSensorHighParameter = doc["humidity sensor"]["highParameter"].as<int>();
+  humSensorOutOfRangeEvents = doc["humidity sensor"]["outOfRangeEvents"].as<int>();
+}
+
+void displayAmbientSensorModuleCurrentConditions(){
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.println("Storage conditions");
+  display.setCursor(0,16);
+  display.print("T: ");
+  display.print(tempSensorValue);
+  display.print("C");
+  if(tempSensorInRange){
+    display.println(" - okay!");
+  } else {
+    if(tempSensorValue < tempSensorLowParameter){
+      display.println(" - too low!");
+    } else {
+      display.println(" - too high!");  
+    }
+  }
+  display.setCursor(0,30);
+  display.print("H: ");
+  display.print(humSensorValue);
+  display.print("%");
+    if(humSensorInRange){
+    display.println(" - okay!");
+  } else {
+    if(humSensorValue < humSensorLowParameter){
+      display.println(" - too low!");
+    } else {
+      display.println(" - too high!");  
+    }
+  }
+  display.display();
 }
