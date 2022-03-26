@@ -21,6 +21,7 @@ const char* password = "96087252974805885212";
 //define the NTP client for getting the time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
+unsigned long epochTime;
 
 const int potentiometer_pin = A0;
 int poteValue;
@@ -107,26 +108,10 @@ void setup() {
   for(int i = 0; i < numAvailableFoods ; i++){
     JsonObject obj = foodstuffs.createNestedObject(availableFoods[i][0]);
     obj["name"] = availableFoods[i][0];
-    if(i % 2 == 0){
-      obj["present"] = true;  
-    } else {
-      obj["present"] = false;  
-    }
-    obj["dateBought"] = NULL;
+    obj["present"] = false;
+    obj["timeEntered"] = NULL;
     obj["goodForDays"] = availableFoods[i][1];
   }
-
-//  JsonObject apples = foodstuffs.createNestedObject("apples");
-//  apples["name"] = "apples";
-//  apples["present"] = true;
-//  apples["dateBought"] = "26.03.22";
-//  apples["goodForDays"] = 7;
-//  
-//  JsonObject bananas = foodstuffs.createNestedObject("bananas");
-//  bananas["name"] = "bananas";
-//  bananas["present"] = true;
-//  bananas["dateBought"] = "23.03.22";
-//  bananas["goodForDays"] = 5;
 
   String output;
   serializeJson(foodstuffs, output);
@@ -134,25 +119,30 @@ void setup() {
 
 void loop(){
   timeClient.update();
-  unsigned long epochTime = timeClient.getEpochTime();
+  epochTime = timeClient.getEpochTime();
   
   poteValue = analogRead(potentiometer_pin);
   int currentFood = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
 //  int displayValue = map(poteValue, 1023, 0, 0, 1);
   if(isMonitorModeActive()){
-    getAmbientSensorModuleDataJson();
-    setGlobalConditionsVariablesFromJson();
-    displayAmbientSensorModuleCurrentConditions();
-    delayWithModeChecking(10);
-//  } else if(displayValue == 1){
-//    display.clearDisplay();
-//    display.setTextSize(1);
-//    display.setCursor(0,0);
-//    display.print("count1: ");
-//    display.println(push_button_count_value1);
-//    display.print("count2: ");
-//    display.println(push_button_count_value2);
-//    display.display();
+    if(push_button_count_value1 == 0){
+      getAmbientSensorModuleDataJson();
+      setGlobalConditionsVariablesFromJson();
+      displayAmbientSensorModuleCurrentConditions();
+      delayWithModeChecking(20);
+    } else if (push_button_count_value1 == 1){
+      displayUrgentItems();
+      int prevPushButtonValue1 = push_button_value1;
+      if(isPushButtonPressed1()){
+        if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+          if(push_button_count_value1 == 1){
+            push_button_count_value1 = 0;
+          } else {
+            push_button_count_value1++;
+          }
+        }
+      }
+    }
   } else {
     display.clearDisplay();
     display.setCursor(0,0);
@@ -162,10 +152,10 @@ void loop(){
     display.print("In pantry: ");
     display.println(foodstuffs[availableFoods[currentFood][0]]["present"].as<String>());
     if(foodstuffs[availableFoods[currentFood][0]]["present"].as<bool>()){
-      display.print("Date bought: ");
-      display.println(foodstuffs[availableFoods[currentFood][0]]["dateBought"].as<String>());
-      display.print("Good for: ");
-      display.print(foodstuffs[availableFoods[currentFood][0]]["goodForDays"].as<String>());
+      display.print("Days kept: ");
+      display.println(getDaysSinceEnteredForFoodstuff(availableFoods[currentFood][0]));
+      display.print("Eat within: ");
+      display.print(getDaysRemainingForFoodstuff(availableFoods[currentFood][0]));
       display.print(" days");
     }
     display.display();
@@ -173,27 +163,12 @@ void loop(){
     if(isPushButtonPressed1()){
       if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
         foodstuffs[availableFoods[currentFood][0]]["present"] = !foodstuffs[availableFoods[currentFood][0]]["present"].as<bool>();
-        foodstuffs[availableFoods[currentFood][0]]["dateBought"] = epochTime;
+        foodstuffs[availableFoods[currentFood][0]]["timeEntered"] = epochTime;
       }
     }
   }
+
   
-//  int prevPushButtonValue1 = push_button_value1;
-//  if(isPushButtonPressed1()){
-//    if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-//      if(push_button_count_value1 > 1){
-//        push_button_count_value1 = 0;  
-//      } else {
-//        push_button_count_value1++;
-//      }
-//    }
-//  }  
-  int prevPushButtonValue2 = push_button_value2;
-  if(isPushButtonPressed2()){
-    if(prevPushButtonValue2 != push_button_value2 && push_button_value2 == 1){
-      push_button_count_value2++;
-    }
-  }  
 }
 
 void getAmbientSensorModuleDataJson(){
@@ -296,10 +271,48 @@ bool isMonitorModeActive(){
 //Allows us not to poll the server too often while 
 //maintaining responsiveness
 void delayWithModeChecking(int waitSeconds){
-  for(int i = waitSeconds; i > 0; i--){
-    delay(1000);
+  for(int i = waitSeconds * 10; i > 0; i--){
+    delay(100);
     if(!isMonitorModeActive()){
       break;
     }
+    int prevPushButtonValue1 = push_button_value1;
+    if(isPushButtonPressed1()){
+      if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+        if(push_button_count_value1 == 1){
+          push_button_count_value1 = 0;
+        } else {
+          push_button_count_value1++;
+        }
+        break;
+      }
+    }
   }
+}
+
+void displayUrgentItems(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println("Eat today:");
+  display.setTextSize(1);
+  for(int i = 0; i < numAvailableFoods; i++){
+    if(foodstuffs[availableFoods[i][0]]["present"]){
+      if(getDaysRemainingForFoodstuff(availableFoods[i][0]) <= 0){
+        display.print(foodstuffs[availableFoods[i][0]]["name"].as<String>());
+        display.print(", ");
+      }
+    }
+  }
+  display.display();
+}
+
+int getDaysRemainingForFoodstuff(String foodstuffName){
+  int daysSinceEntered = getDaysSinceEnteredForFoodstuff(foodstuffName);
+  return foodstuffs[foodstuffName]["goodForDays"].as<int>() - daysSinceEntered;
+}
+
+int getDaysSinceEnteredForFoodstuff(String foodstuffName){ 
+  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86399 * 3; //simulate almost three days later
+  return secondsSinceEntered / 60 / 60 / 24;
 }
