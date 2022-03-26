@@ -1,9 +1,12 @@
+#include <LittleFS.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <NTPClient.h>
+#include <WifiUdp.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -14,6 +17,10 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 //WiFi connection
 const char* ssid = "FRITZ!Box 7590 XO";
 const char* password = "96087252974805885212";
+
+//define the NTP client for getting the time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 const int potentiometer_pin = A0;
 int poteValue;
@@ -63,6 +70,13 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) continue;
 
+  //initialise the time client
+  timeClient.begin();
+  timeClient.setTimeOffset(3600); //GMT +1
+
+  //initialise the fileSystem
+  LittleFS.begin();
+
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
@@ -89,6 +103,7 @@ void setup() {
   }
   Serial.println("Connected!");
 
+  
   for(int i = 0; i < numAvailableFoods ; i++){
     JsonObject obj = foodstuffs.createNestedObject(availableFoods[i]);
     obj["name"] = availableFoods[i];
@@ -118,8 +133,11 @@ void setup() {
 }
 
 void loop(){
+  timeClient.update();
+  unsigned long epochTime = timeClient.getEpochTime();
+  
   poteValue = analogRead(potentiometer_pin);
-  int foodToDisplay = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
+  int currentFood = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
 //  int displayValue = map(poteValue, 1023, 0, 0, 1);
   if(isMonitorModeActive()){
     getAmbientSensorModuleDataJson();
@@ -139,30 +157,37 @@ void loop(){
     display.clearDisplay();
     display.setCursor(0,0);
     display.setTextSize(2);
-    display.println(foodstuffs[availableFoods[foodToDisplay]]["name"].as<String>());
+    display.println(foodstuffs[availableFoods[currentFood]]["name"].as<String>());
     display.setTextSize(1);
     display.print("In pantry: ");
-    display.println(foodstuffs[availableFoods[foodToDisplay]]["present"].as<String>());
-    if(foodstuffs[availableFoods[foodToDisplay]]["present"].as<bool>()){
+    display.println(foodstuffs[availableFoods[currentFood]]["present"].as<String>());
+    if(foodstuffs[availableFoods[currentFood]]["present"].as<bool>()){
       display.print("Date bought: ");
-      display.println(foodstuffs[availableFoods[foodToDisplay]]["dateBought"].as<String>());
+      display.println(foodstuffs[availableFoods[currentFood]]["dateBought"].as<String>());
       display.print("Good for: ");
-      display.print(foodstuffs[availableFoods[foodToDisplay]]["goodForDays"].as<String>());
+      display.print(foodstuffs[availableFoods[currentFood]]["goodForDays"].as<String>());
       display.print(" days");  
     }
     display.display();
-  }
-  
-  int prevPushButtonValue1 = push_button_value1;
-  if(isPushButtonPressed1()){
-    if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-      if(push_button_count_value1 > 1){
-        push_button_count_value1 = 0;  
-      } else {
-        push_button_count_value1++;
+    int prevPushButtonValue1 = push_button_value1;
+    if(isPushButtonPressed1()){
+      if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+        foodstuffs[availableFoods[currentFood]]["present"] = !foodstuffs[availableFoods[currentFood]]["present"].as<bool>();
+        foodstuffs[availableFoods[currentFood]]["dateBought"] = epochTime;
       }
     }
-  }  
+  }
+  
+//  int prevPushButtonValue1 = push_button_value1;
+//  if(isPushButtonPressed1()){
+//    if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+//      if(push_button_count_value1 > 1){
+//        push_button_count_value1 = 0;  
+//      } else {
+//        push_button_count_value1++;
+//      }
+//    }
+//  }  
   int prevPushButtonValue2 = push_button_value2;
   if(isPushButtonPressed2()){
     if(prevPushButtonValue2 != push_button_value2 && push_button_value2 == 1){
