@@ -31,9 +31,12 @@ int switch_value;
 
 const char* host = "192.168.178.71";
 
-const int numAvailableFoods = 5;
-const String availableFoods[numAvailableFoods] = {"apples", "bananas", "brocolli", "cherries", "grapes"};
-StaticJsonDocument<512> foodstuffs;
+const int numAvailableFoods = 10;
+const String availableFoods[numAvailableFoods] = {
+  "apples", "bananas", "blueberry", "brocolli", "cauliflwr", "cherries", 
+  "grapes", "potatoes", "onions", "oranges"
+};
+StaticJsonDocument<4000> foodstuffs;
 
 WiFiClient client;
 HTTPClient http;
@@ -72,7 +75,7 @@ void setup() {
   display.setCursor(0, 0);
   // Display welcome message
   display.println("Welcome to");
-  display.println("the Smart");
+  display.println("Smart");
   display.println("Pantry!");
   display.display();
   
@@ -246,8 +249,13 @@ bool isMonitorModeActive(){
   switch_value = digitalRead(switch_pin);
   if(prevSwitchValue != switch_value){
     display.clearDisplay();
-    display.println("loading...");
-    display.display();
+    if(switch_value == 1){
+      display.setCursor(0,0);
+      display.println("Storage conditions"); 
+      display.setCursor(0, 16);
+      display.println("loading...");
+      display.display();  
+    }
   }
   if (switch_value == 0){
     return false;
