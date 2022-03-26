@@ -41,14 +41,16 @@ const char* host = "192.168.178.71";
 
 const int numAvailableFoods = 10;
 const String availableFoods[numAvailableFoods][2] = {
-  {"Apples", "6"}, {"Bananas", "4"}, {"Blueberry", "3"}, {"brocolli", "6"}, {"cauliflwr", "6"}, {"cherries", "3"}, 
-  {"grapes", "5"}, {"potatoes", "7"}, {"onions", "14"}, {"oranges", "6"}
+  {"Apples", "6"}, {"Bananas", "4"}, {"Blueberry", "3"}, {"Brocolli", "6"}, {"Cauliflwr", "6"}, {"Cherries", "3"}, 
+  {"Grapes", "5"}, {"Potatoes", "7"}, {"Onions", "14"}, {"Oranges", "6"}
 };
 StaticJsonDocument<4000> foodstuffs;
 
 WiFiClient client;
 HTTPClient http;
 StaticJsonDocument<512> doc;
+
+int numScreensInMonitorMode = 3;
 
 int tempSensorValue;
 bool tempSensorInRange;
@@ -126,22 +128,16 @@ void loop(){
 //  int displayValue = map(poteValue, 1023, 0, 0, 1);
   if(isMonitorModeActive()){
     if(push_button_count_value1 == 0){
+      displayEatTodayItems();
+      checkForButton1Press();
+    } else if(push_button_count_value1 == 1){
+      displayEatTomorrowItems();
+      checkForButton1Press();
+    } else if (push_button_count_value1 == 2){
       getAmbientSensorModuleDataJson();
       setGlobalConditionsVariablesFromJson();
       displayAmbientSensorModuleCurrentConditions();
-      delayWithModeChecking(20);
-    } else if (push_button_count_value1 == 1){
-      displayUrgentItems();
-      int prevPushButtonValue1 = push_button_value1;
-      if(isPushButtonPressed1()){
-        if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-          if(push_button_count_value1 == 1){
-            push_button_count_value1 = 0;
-          } else {
-            push_button_count_value1++;
-          }
-        }
-      }
+      delayWithResponsiveButtons(20);
     }
   } else {
     display.clearDisplay();
@@ -270,27 +266,19 @@ bool isMonitorModeActive(){
 //the Switch position away from monitor mode.
 //Allows us not to poll the server too often while 
 //maintaining responsiveness
-void delayWithModeChecking(int waitSeconds){
+void delayWithResponsiveButtons(int waitSeconds){
   for(int i = waitSeconds * 10; i > 0; i--){
     delay(100);
     if(!isMonitorModeActive()){
       break;
     }
-    int prevPushButtonValue1 = push_button_value1;
-    if(isPushButtonPressed1()){
-      if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-        if(push_button_count_value1 == 1){
-          push_button_count_value1 = 0;
-        } else {
-          push_button_count_value1++;
-        }
-        break;
-      }
+    if(checkForButton1Press()){
+      break;
     }
   }
 }
 
-void displayUrgentItems(){
+void displayEatTodayItems(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(2);
@@ -307,6 +295,23 @@ void displayUrgentItems(){
   display.display();
 }
 
+void displayEatTomorrowItems(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(1);
+  display.println("Eat tomorrow:");
+  display.setTextSize(1);
+  for(int i = 0; i < numAvailableFoods; i++){
+    if(foodstuffs[availableFoods[i][0]]["present"]){
+      if(getDaysRemainingForFoodstuff(availableFoods[i][0]) == 1){
+        display.print(foodstuffs[availableFoods[i][0]]["name"].as<String>());
+        display.print(", ");
+      }
+    }
+  }
+  display.display();
+}
+
 int getDaysRemainingForFoodstuff(String foodstuffName){
   int daysSinceEntered = getDaysSinceEnteredForFoodstuff(foodstuffName);
   return foodstuffs[foodstuffName]["goodForDays"].as<int>() - daysSinceEntered;
@@ -315,4 +320,19 @@ int getDaysRemainingForFoodstuff(String foodstuffName){
 int getDaysSinceEnteredForFoodstuff(String foodstuffName){ 
   int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86399 * 3; //simulate almost three days later
   return secondsSinceEntered / 60 / 60 / 24;
+}
+
+bool checkForButton1Press(){
+  int prevPushButtonValue1 = push_button_value1;
+  if(isPushButtonPressed1()){
+    if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+     if(push_button_count_value1 == numScreensInMonitorMode - 1){
+        push_button_count_value1 = 0;
+      } else {
+        push_button_count_value1++;
+      }
+      return true;
+    }
+  }
+  return false;
 }
