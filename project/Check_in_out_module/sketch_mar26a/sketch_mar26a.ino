@@ -31,8 +31,9 @@ int switch_value;
 
 const char* host = "192.168.178.71";
 
-StaticJsonDocument<512> foodStuffs;
-
+const String availableFoods[2] = {"apples", "bananas"};
+const int numAvailableFoods = 2;
+StaticJsonDocument<512> foodstuffs;
 
 WiFiClient client;
 HTTPClient http;
@@ -85,43 +86,52 @@ void setup() {
   }
   Serial.println("Connected!");
 
-  
-  JsonObject apples = foodStuffs.createNestedObject("apples");
+  JsonObject apples = foodstuffs.createNestedObject("apples");
+  apples["name"] = "apples";
   apples["present"] = true;
   apples["dateBought"] = "26.03.22";
   apples["goodForDays"] = 7;
   
-  JsonObject bananas = foodStuffs.createNestedObject("bananas");
+  JsonObject bananas = foodstuffs.createNestedObject("bananas");
+  bananas["name"] = "bananas";
   bananas["present"] = true;
   bananas["dateBought"] = "23.03.22";
   bananas["goodForDays"] = 5;
 
   String output;
-  serializeJson(foodStuffs, output);
+  serializeJson(foodstuffs, output);
 }
 
 void loop(){
   poteValue = analogRead(potentiometer_pin);
-  int displayValue = map(poteValue, 1023, 0, 0, 2);
+  int foodToDisplay = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
+//  int displayValue = map(poteValue, 1023, 0, 0, 1);
   if(isMonitorModeActive()){
     getAmbientSensorModuleDataJson();
     setGlobalConditionsVariablesFromJson();
     displayAmbientSensorModuleCurrentConditions();
     delayWithModeChecking(10);
-  } else if(displayValue == 1){
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    display.print("count1: ");
-    display.println(push_button_count_value1);
-    display.print("count2: ");
-    display.println(push_button_count_value2);
-    display.display();
+//  } else if(displayValue == 1){
+//    display.clearDisplay();
+//    display.setTextSize(1);
+//    display.setCursor(0,0);
+//    display.print("count1: ");
+//    display.println(push_button_count_value1);
+//    display.print("count2: ");
+//    display.println(push_button_count_value2);
+//    display.display();
   } else {
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0,0);
-    display.print("foodstuff here");
+    display.println(foodstuffs[availableFoods[foodToDisplay]]["name"].as<String>());
+    display.print("In pantry: ");
+    display.println(foodstuffs[availableFoods[foodToDisplay]]["present"].as<String>());
+    display.print("Date bought: ");
+    display.println(foodstuffs[availableFoods[foodToDisplay]]["dateBought"].as<String>());
+    display.print("Good for: ");
+    display.print(foodstuffs[availableFoods[foodToDisplay]]["goodForDays"].as<String>());
+    display.print(" days");
     display.display();
   }
   
