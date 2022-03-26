@@ -44,14 +44,15 @@ void setup() {
   }
   delay(2000);
   display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  // Display static text
-  display.println("Welcome! Smart Pantry");
-  display.display();
   
+  display.setTextColor(WHITE);
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  // Display welcome message
+  display.println("Welcome to");
+  display.println("the Smart");
+  display.println("Pantry!");
+  display.display();
   
   // Initialize WiFi library
   WiFi.begin(ssid, password);
@@ -96,6 +97,7 @@ void setGlobalConditionsVariablesFromJson(){
 
 void displayAmbientSensorModuleCurrentConditions(){
   display.clearDisplay();
+  display.setTextSize(1);
   display.setCursor(0,0);
   display.println("Storage conditions");
   display.setCursor(0,16);
