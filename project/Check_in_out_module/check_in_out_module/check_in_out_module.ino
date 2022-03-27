@@ -444,24 +444,14 @@ void displayAddWasteScreen(){
   display.setCursor(0,0);
   display.setTextSize(2);
   display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
-  display.println("Add waste: ");
   display.setTextSize(1);
-//  display.print("In pantry: ");
-//  display.println(foodstuffs[availableFoods[current_food][0]]["present"].as<String>());
-//  if(foodstuffs[availableFoods[current_food][0]]["present"].as<bool>()){
-//    display.print("Days kept: ");
-//    display.println(getDaysSinceEnteredForFoodstuff(availableFoods[current_food][0]));
-//    display.print("Eat within: ");
-//    display.print(getDaysRemainingForFoodstuff(availableFoods[current_food][0]));
-//    display.print(" days");
-//  }
-//  display.display();
-//  display.clearDisplay();
-  display.print("Wasted[g]: ");
-  display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<String>());
+  display.println("             Add waste");
+  display.println("");
+  display.print("Wasted[Kg]: ");
+  display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
+  display.println("");
   LoadCell.update();
   float weightValue = LoadCell.getData();
-  display.setCursor(0,32);
   display.print("Add waste[g]: ");
   display.print(weightValue);
   display.display();
