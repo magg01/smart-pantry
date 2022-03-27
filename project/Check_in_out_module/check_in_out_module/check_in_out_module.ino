@@ -37,7 +37,7 @@ int poteValue;
 
 const int push_button_pin1 = D7;
 int push_button_value1;
-int push_button_count_value1 = 0;
+int monitor_mode_screen_selection_value = 0;
 
 const int push_button_pin2 = D8;
 int push_button_value2;
@@ -151,25 +151,25 @@ void loop(){
   poteValue = analogRead(potentiometer_pin);
   int currentFood = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
   if(isMonitorModeActive()){
-    if(push_button_count_value1 == 0){
+    if(monitor_mode_screen_selection_value == 0){
       displayEatTodayItems();
       if(checkForButton1Press()){
-        cycleScreens();
+        cycleMonitorModeScreens();
       }
-    } else if(push_button_count_value1 == 1){
+    } else if(monitor_mode_screen_selection_value == 1){
       displayEatTomorrowItems();
       if(checkForButton1Press()){
-        cycleScreens();
+        cycleMonitorModeScreens();
       }
-    } else if (push_button_count_value1 == 2){
+    } else if (monitor_mode_screen_selection_value == 2){
       getAmbientSensorModuleDataJson();
       setGlobalConditionsVariablesFromJson();
       displayAmbientSensorModuleCurrentConditions();
       delayWithResponsiveButtons(20);
-    } else if (push_button_count_value1 == 3){
+    } else if (monitor_mode_screen_selection_value == 3){
       displayWeightScreen();
       if(checkForButton1Press()){
-        cycleScreens();
+        cycleMonitorModeScreens();
       }
     }
   } else {
@@ -302,7 +302,7 @@ void delayWithResponsiveButtons(int waitSeconds){
       break;
     }
     if(checkForButton1Press()){
-      cycleScreens();
+      cycleMonitorModeScreens();
       break;
     }
     if(checkForButton2Press()){
@@ -379,11 +379,11 @@ bool checkForButton2Press(){
   return false;
 }
 
-void cycleScreens(){
-  if(push_button_count_value1 == numScreensInMonitorMode - 1){
-    push_button_count_value1 = 0;
+void cycleMonitorModeScreens(){
+  if(monitor_mode_screen_selection_value == numScreensInMonitorMode - 1){
+    monitor_mode_screen_selection_value = 0;
   } else {
-    push_button_count_value1++;
+    monitor_mode_screen_selection_value++;
   }
 }
 
