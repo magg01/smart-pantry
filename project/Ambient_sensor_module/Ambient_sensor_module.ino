@@ -26,24 +26,23 @@ DynamicJsonDocument doc(1024);
 //to maintain data between power offs.
 StaticJsonDocument<256> parameterConfigs;
 
+//initialise the LCD screen
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+//allocate the pins to the respective devices
+const int potentiometer_pin = A0;
+const int switch_pin = D0;
+const int buzzer_pin = D5;
+const int temp_hum_pin = D6;
+const int pir_sensor_pin = D7;
+const int push_button_pin = D8;
+
 //initialise the DHT11 temperature and humidity sensor and its measurable ranges
 DHT dht(temp_hum_pin, DHT11);
 int minMeasurableTemp = 0;
 int maxMeasurableTemp = 60;
 int minMeasurableHum = 5; 
 int maxMeasurableHum = 95;
-
-//initialise the LCD screen
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-//allocate the pins to the respective devices
-const int switch_pin = D0;
-const int led_pin = D2;
-const int pir_sensor_pin = D7;
-const int push_button_pin = D8;
-const int potentiometer_pin = A0;
-const int buzzer_pin = D5;
-const int temp_hum_pin = D6;
 
 //declare the global variables used to keep track of values from sensors and physical devices
 int switch_value;
