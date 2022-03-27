@@ -33,12 +33,10 @@ int poteValue;
 //initialise the buzzer pin
 const int buzzer_pin = D5;
 bool tempAlarmSignaled = false;
-int countTempAlarm = 0;
 
 //initialise the temperature and humidity pin
 const int temp_hum_pin = D6;
 bool humAlarmSignaled = false;
-int countHumAlarm = 0;
 
 //initialise the DHT11 component
 DHT dht(temp_hum_pin, DHT11);
@@ -247,6 +245,16 @@ void get_index(){
     html += "Which is <strong>outside</strong> the specified range.";
   }
   html += "</p></div>";
+  html += "<div><p>";
+  html += "You have had <strong>";
+  html += parameterConfigs["temperature"]["outOfRangeEvents"].as<String>();
+  html += "</strong> out of range events from the temperature sensor.";
+  html += "</p></div>";
+  html += "<div><p>";
+  html += "You have had <strong>";
+  html += parameterConfigs["humidity"]["outOfRangeEvents"].as<String>();
+  html += "</strong> out of range events from the humidity sensor.";
+  html += "</p></div>";
   html += "<div><p>Test the warning buzzer:</p></div>";
   html += "<a href=\"/setBuzzerStatus?s=0\" target=\"_self\"\"\"><button>Turn Off </button></a>";
   html += "<a href=\"/setBuzzerStatus?s=1\" target=\"_self\"\"\"><button>Turn On </button></a>";
@@ -436,7 +444,7 @@ bool isHumWithinSpecifiedRange(){
 void trigBuzzerWhenOutsideSpecifiedRange(){
   if(!isTempWithinSpecifiedRange() && !tempAlarmSignaled){
     soundWarningBuzzer();
-    countTempAlarm++;
+    parameterConfigs["temperature"]["outOfRangeEvents"] = parameterConfigs["temperature"]["outOfRangeEvents"].as<int>() + 1;
     tempAlarmSignaled = true;
   }
   if(tempAlarmSignaled && isTempWithinSpecifiedRange()){
@@ -444,7 +452,7 @@ void trigBuzzerWhenOutsideSpecifiedRange(){
   }
   if(!isHumWithinSpecifiedRange() && !humAlarmSignaled){
     soundWarningBuzzer();
-    countHumAlarm++;
+    parameterConfigs["humidity"]["outOfRangeEvents"] = parameterConfigs["humidity"]["outOfRangeEvents"].as<int>() + 1; 
     humAlarmSignaled = true;
   }
   if(humAlarmSignaled && isHumWithinSpecifiedRange()){
@@ -470,14 +478,14 @@ void sendSensorJsonData(){
   tempDHT11["inRange"] = isTempWithinSpecifiedRange();
   tempDHT11["lowParameter"] = parameterConfigs["temperature"]["lowParameter"];
   tempDHT11["highParameter"] = parameterConfigs["temperature"]["highParameter"];
-  tempDHT11["outOfRangeEvents"] = countTempAlarm;
+  tempDHT11["outOfRangeEvents"] = parameterConfigs["temperature"]["outOfRangeEvents"];
   JsonObject humDHT11 = doc.createNestedObject("humidity sensor");
   humDHT11["sensorName"] = "DHT11";
   humDHT11["sensorValue"] = humidity;
   humDHT11["inRange"] = isHumWithinSpecifiedRange();
   humDHT11["lowParameter"] = parameterConfigs["humidity"]["lowParameter"];
   humDHT11["highParameter"] = parameterConfigs["humidity"]["highParameter"];
-  humDHT11["outOfRangeEvents"] = countHumAlarm;
+  humDHT11["outOfRangeEvents"] = parameterConfigs["humidity"]["outOfRangeEvents"];
 
   String jsonStr;
   serializeJsonPretty(doc, jsonStr);
