@@ -31,6 +31,7 @@ unsigned long epochTime;
 //set up the loadcell
 HX711_ADC LoadCell(14,12);
 
+String foodstuffs_filename = "saved_foodstuffs.txt";
 
 const int potentiometer_pin = A0;
 int poteValue;
@@ -62,7 +63,7 @@ HTTPClient http;
 StaticJsonDocument<512> doc;
 
 int numScreensInMonitorMode = 3;
-int numScreensInAddRemoveMode = 2;
+int numScreensInAddRemoveMode = 4;
 
 bool displayIpAddress = false;
 
@@ -97,6 +98,17 @@ void setup() {
 
   //initialise the fileSystem
   LittleFS.begin();
+  String result = loadFoodstuffsFromFile();
+  if (result == ""){
+    for(int i = 0; i < numAvailableFoods ; i++){
+      JsonObject obj = foodstuffs.createNestedObject(availableFoods[i][0]);
+      obj["name"] = availableFoods[i][0];
+      obj["present"] = false;
+      obj["timeEntered"] = NULL;
+      obj["goodForDays"] = availableFoods[i][1];
+      obj["amountWasted[g]"] = NULL;
+    }
+  }
 
   //set the server routes
   server.on("/", get_index);
@@ -129,16 +141,6 @@ void setup() {
     Serial.println("Waiting to connect...");
   }
   Serial.println("Connected!");
-
-  
-  for(int i = 0; i < numAvailableFoods ; i++){
-    JsonObject obj = foodstuffs.createNestedObject(availableFoods[i][0]);
-    obj["name"] = availableFoods[i][0];
-    obj["present"] = false;
-    obj["timeEntered"] = NULL;
-    obj["goodForDays"] = availableFoods[i][1];
-    obj["amountWasted[g]"] = NULL;
-  }
 
   String output;
   serializeJson(foodstuffs, output);
@@ -173,17 +175,67 @@ void loop(){
   } else {
     if(add_remove_mode_screen_selection_value == 0){
       displayAddRemoveToFromPantryScreen();
-      if(checkForButton2Press()){
-        foodstuffs[availableFoods[current_food][0]]["present"] = !foodstuffs[availableFoods[current_food][0]]["present"].as<bool>();
-        foodstuffs[availableFoods[current_food][0]]["timeEntered"] = epochTime;
-      }
     } else if (add_remove_mode_screen_selection_value == 1){
       displayAddWasteScreen();
-    }
+    } else if (add_remove_mode_screen_selection_value == 2){
+      displayResetWasteScreen();
+    } else if (add_remove_mode_screen_selection_value == 3){
+      displayResetAllWasteScreen();
+    }    
     if(checkForButton1Press()){
       cycleAddRemoveModeScreens();
     }
   }  
+}
+
+void displayResetWasteScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
+  display.setTextSize(1);
+  display.println("");
+  display.print("Wasted[Kg]: ");
+  display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
+  display.println();
+  display.println("");
+  display.println("");
+  display.println("     Reset waste to 0");
+  display.display();
+  if(checkForButton2Press()){
+    foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"] = 0.0;  
+    writeToFoodstuffsfile();
+  }
+}
+
+void displayResetAllWasteScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println("Reset all");
+  display.setTextSize(1);
+  display.println("");
+  display.print("Reset the waste levels for all foods?");
+  display.println("");
+  display.println("");
+  display.println("");
+  display.println(" Reset all waste to 0");
+  display.display();
+  if(checkForButton2Press()){
+    for(int i = 0; i < numAvailableFoods; i++){
+      foodstuffs[availableFoods[i][0]]["amountWasted[g]"] = 0.0;    
+    }
+    writeToFoodstuffsfile();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.setTextSize(2);
+    display.println("Reset all");
+    display.setTextSize(1);
+    display.println("");
+    display.print("Reset completed!");
+    display.display();
+    delay(2000);
+  }
 }
 
 void getAmbientSensorModuleDataJson(){
@@ -462,6 +514,7 @@ void displayAddWasteScreen(){
   display.display();
   if(checkForButton2Press()){
     foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"] = foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() + weightValue;  
+    writeToFoodstuffsfile();
   }
 }
 
@@ -492,6 +545,13 @@ void displayAddRemoveToFromPantryScreen(){
     display.println("        Add to pantry");  
   }
   display.display();
+  if(checkForButton2Press()){
+    //switch the "present" bool to its opposite value and record the time entered.
+    foodstuffs[availableFoods[current_food][0]]["present"] = !foodstuffs[availableFoods[current_food][0]]["present"].as<bool>();
+    foodstuffs[availableFoods[current_food][0]]["timeEntered"] = epochTime;
+    //write the changes to the saved foodstuffs file
+    writeToFoodstuffsfile();
+  }
 }
 
 void displayLoadingStorageConditionsScreen(){
@@ -502,4 +562,45 @@ void displayLoadingStorageConditionsScreen(){
   display.setCursor(0, 16);
   display.println("loading...");
   display.display(); 
+}
+
+String loadFoodstuffsFromFile() {
+  String result = "";
+  File foodstuffsFile = LittleFS.open(foodstuffs_filename, "r");
+  if (!foodstuffsFile) { 
+    // failed the read operation return blank result
+    Serial.print("Could not read " + foodstuffs_filename);
+    return result;
+  }
+  while (foodstuffsFile.available()) {
+    result += (char)foodstuffsFile.read();
+  }
+  foodstuffsFile.close();
+  Serial.print("Got " + result + " from " + foodstuffs_filename);
+  buildFoodstuffsFromString(result);
+  return result;
+}
+
+void buildFoodstuffsFromString(String jsonString){
+  deserializeJson(foodstuffs, jsonString);  
+}
+
+
+bool writeToFoodstuffsfile() {  
+  File foodstuffsFile = LittleFS.open(foodstuffs_filename, "w");
+  if (!foodstuffsFile) { 
+    // failed to open the foodstuffsFile for writing
+    return false;
+  }
+
+  String foodstuffsStr;
+  serializeJson(foodstuffs, foodstuffsStr);
+  int bytesWritten = foodstuffsFile.print(foodstuffsStr);
+  if (bytesWritten == 0) { 
+    // write operation failed on foodstuffsFile
+    return false;
+  }
+   
+  foodstuffsFile.close();
+  return true;
 }
