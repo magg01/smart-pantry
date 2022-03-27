@@ -3,6 +3,7 @@
 #include "DHT.h"
 #include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
+#include <LittleFS.h>
 
 // set the port for the web server
 ESP8266WebServer server(80);
@@ -12,14 +13,17 @@ const char* password = "96087252974805885212";
 //allocate the JSON document
 //allows us to allocate memory to the document dynamically.
 DynamicJsonDocument doc(1024);
+StaticJsonDocument<1000> parameterConfigs;
 
 const int switch_pin = D0;
 int switch_value;
 
+String parameter_configs_filename = "parameterConfigs.txt";
+
 const int led_pin = D2;
-const int pir_sensor_pin = D8;
+const int pir_sensor_pin = D7;
 int pir_sensor_value;
-const int push_button_pin = D7;
+const int push_button_pin = D8;
 int push_button_value;
 int push_button_count_value = 0;
 
@@ -43,13 +47,6 @@ int minMeasurableTemp = 0;
 int maxMeasurableTemp = 60;
 int minMeasurableHum = 5; 
 int maxMeasurableHum = 95;
-
-//the low and high temperature thresholds set by the user (initialised to measurable ranges)
-int lowSetTemp = minMeasurableTemp;
-int highSetTemp = maxMeasurableTemp;
-//the low and high humidity thresholds set by the user (initialised to measurable ranges)
-int lowSetHum = minMeasurableHum;
-int highSetHum = maxMeasurableHum;
 
 int temperature = 0;
 int humidity = 0;
@@ -79,10 +76,26 @@ void setup() {
   pinMode(push_button_pin, INPUT);
   pinMode(pir_sensor_pin, INPUT);
   digitalWrite(buzzer_pin, LOW);
+  
+  Serial.begin(9600);
+  delay(2000);
+
+  //initialise the fileSystem
+  LittleFS.begin();
+  String parameterConfigsStr = loadParameterConfigsFromFile();
+  if(parameterConfigsStr == ""){
+    //if no parameterConfigFile then initialise the ranges as wide as possible
+    JsonObject temperatureParams = parameterConfigs.createNestedObject("temperature");
+    temperatureParams["lowParameter"] = minMeasurableTemp;
+    temperatureParams["highParameter"] = maxMeasurableTemp;
+    temperatureParams["outOfRangeEvents"] = 0;
+    JsonObject humidityParams = parameterConfigs.createNestedObject("humidity");
+    humidityParams["lowParameter"] = minMeasurableHum;
+    humidityParams["highParameter"] = maxMeasurableHum;
+    humidityParams["outOfRangeEvents"] = 0;
+  }
 
   WiFi.begin(ssid, password);
-  Serial.begin(9600);
-
   while (WiFi.status() != WL_CONNECTED){
     delay(500);
     Serial.println("Waiting to connect...");
@@ -94,7 +107,7 @@ void setup() {
 
   server.on("/", get_index);
   server.on("/setBuzzerStatus", setBuzzerStatus);
-  server.on("/json/sensors", getSensorJsonData);
+  server.on("/json/sensors", sendSensorJsonData);
 
   server.begin();
   Serial.println("Server listening...");
@@ -156,17 +169,17 @@ void loop() {
   } else {
     //depending on how many times the push button is pressed cycle through the parameter settings
     if(push_button_count_value == 0){
-      setLowSetTemp();
-      displaySetParameterMessage(setLowTempMessage1, &lowSetTemp, "C");
+      setLowTempParameter();
+      displaySetLowTempParameterMessage(setLowTempMessage1);
     } else if(push_button_count_value == 1){
-      setHighSetTemp();
-      displaySetParameterMessage(setHighTempMessage1, &highSetTemp, "C");
+      setHighTempParameter();
+      displaySetHighTempParameterMessage(setHighTempMessage1);
     } else if(push_button_count_value == 2){
-      setLowSetHum();
-      displaySetParameterMessage(setLowHumMessage1, &lowSetHum, "%");
+      setLowHumParameter();
+      displaySetLowHumParameterMessage(setLowHumMessage1);
     } else if(push_button_count_value == 3) {
-      setHighSetHum();
-      displaySetParameterMessage(setHighHumMessage1, &highSetHum, "%");
+      setHighHumParameter();
+      displaySetHighHumParameterMessage(setHighHumMessage1);
     } else {
       displaySaveParametersMessage();
     }
@@ -191,6 +204,11 @@ bool isSetModeActive(){
   if(prevSwitchValue != switch_value){
     lcd.clear();
     push_button_count_value = 0;
+    if(switch_value == 0){
+      if(writeParameterConfigsTofile()){
+        Serial.print("successfully wrote to file");
+      }  
+    }
   }
   if (switch_value == 0){
     return false;
@@ -266,42 +284,36 @@ void readTempHum(){
   if (temporary >= minMeasurableHum && temporary <= maxMeasurableHum){
     humidity = temporary;
   }  
-//  Serial.print("temperature: ");
-//  Serial.print(temperature);
-//  Serial.print("\t");
-//  Serial.print("humidity: ");
-//  Serial.print(humidity);
-//  Serial.print("\n");
 }
 
-void setLowSetTemp(){
-  int prevLowSetTemp = lowSetTemp;
-  lowSetTemp = map(poteValue, 1023, 0, minMeasurableTemp, highSetTemp);
-  if (lowSetTemp != prevLowSetTemp){
+void setLowTempParameter(){
+  int prevLowTempParameter = parameterConfigs["temperature"]["lowParameter"];
+  parameterConfigs["temperature"]["lowParameter"] = map(poteValue, 1023, 0, minMeasurableTemp, parameterConfigs["temperature"]["highParameter"]);
+  if (parameterConfigs["temperature"]["lowParameter"] != prevLowTempParameter){
     lcd.clear();
   }
 }
 
-void setHighSetTemp(){
-  int prevHighSetTemp = highSetTemp;
-  highSetTemp = map(poteValue, 1023, 0, lowSetTemp, maxMeasurableTemp);
-  if (highSetTemp != prevHighSetTemp){
+void setHighTempParameter(){
+  int prevHighTempParameter = parameterConfigs["temperature"]["highParameter"];
+  parameterConfigs["temperature"]["highParameter"] = map(poteValue, 1023, 0, parameterConfigs["temperature"]["lowParameter"], maxMeasurableTemp);
+  if (parameterConfigs["temperature"]["highParameter"] != prevHighTempParameter){
     lcd.clear();
   }
 }
 
-void setLowSetHum(){
-  int prevLowSetHum = lowSetHum;
-  lowSetHum = map(poteValue, 1023, 0, minMeasurableHum, highSetHum);
-  if (lowSetHum != prevLowSetHum){
+void setLowHumParameter(){
+  int prevLowHumParameter = parameterConfigs["humidity"]["lowParameter"];
+  parameterConfigs["humidity"]["lowParameter"] = map(poteValue, 1023, 0, minMeasurableHum, parameterConfigs["humidity"]["highParameter"]);
+  if (parameterConfigs["humidity"]["lowParameter"] != prevLowHumParameter){
     lcd.clear();
   }
 }
 
-void setHighSetHum(){
-  int prevHighSetHum = highSetHum;
-  highSetHum = map(poteValue, 1023, 0, lowSetHum, maxMeasurableHum);
-  if (highSetHum != prevHighSetHum){
+void setHighHumParameter(){
+  int prevHighHumParameter = parameterConfigs["humidity"]["highParameter"];
+  parameterConfigs["humidity"]["highParameter"] = map(poteValue, 1023, 0, parameterConfigs["humidity"]["lowParameter"], maxMeasurableHum);
+  if (parameterConfigs["humidity"]["highParameter"] != prevHighHumParameter){
     lcd.clear();
   }
 }
@@ -318,7 +330,7 @@ void displayData(){
   lcd.setCursor(0,0);
   lcd.print(tempMessage);
   lcd.setCursor(0,1);
-  lcd.print(humMessage );
+  lcd.print(humMessage);
 }
 
 void displayWebserverIpAddress(){
@@ -332,25 +344,50 @@ void displayWebserverIpAddress(){
 void displayParameterValues(){
   lcd.setCursor(0,0);
   lcd.print("Temp: ");
-  lcd.print(lowSetTemp);
+  lcd.print(parameterConfigs["temperature"]["lowParameter"].as<String>());
   lcd.print(" - ");
-  lcd.print(highSetTemp);
+  lcd.print(parameterConfigs["temperature"]["highParameter"].as<String>());
   lcd.print("C");
   lcd.setCursor(0,1);
   lcd.print("Hum: ");
-  lcd.print(lowSetHum);
+  lcd.print(parameterConfigs["humidity"]["lowParameter"].as<String>());
   lcd.print(" - ");
-  lcd.print(highSetHum);
+  lcd.print(parameterConfigs["humidity"]["highParameter"].as<String>());
   lcd.print("%");
 }
 
-void displaySetParameterMessage(String message, int* valueToSet, String unit){
+void displaySetLowTempParameterMessage(String message){
   lcd.setCursor(0,0);
   lcd.print(message);
   lcd.setCursor(0,1);
-  lcd.print(*valueToSet);
-  lcd.print(unit);
+  lcd.print(parameterConfigs["temperature"]["lowParameter"].as<String>());
+  lcd.print("C");
 }
+
+void displaySetHighTempParameterMessage(String message){
+  lcd.setCursor(0,0);
+  lcd.print(message);
+  lcd.setCursor(0,1);
+  lcd.print(parameterConfigs["temperature"]["highParameter"].as<String>());
+  lcd.print("C");
+}
+
+void displaySetLowHumParameterMessage(String message){
+  lcd.setCursor(0,0);
+  lcd.print(message);
+  lcd.setCursor(0,1);
+  lcd.print(parameterConfigs["humidity"]["lowParameter"].as<String>());
+  lcd.print("%");
+}
+
+void displaySetHighHumParameterMessage(String message){
+  lcd.setCursor(0,0);
+  lcd.print(message);
+  lcd.setCursor(0,1);
+  lcd.print(parameterConfigs["humidity"]["highParameter"].as<String>());
+  lcd.print("%");
+}
+
 
 void displaySaveParametersMessage(){
   lcd.setCursor(0,0);
@@ -381,7 +418,7 @@ void displayBootWelcomeMessage(){
 }
 
 bool isTempWithinSpecifiedRange(){
-  if(temperature > highSetTemp || temperature < lowSetTemp){
+  if(temperature > parameterConfigs["temperature"]["highParameter"] || temperature < parameterConfigs["temperature"]["lowParameter"]){
     return false;
   } else {
     return true;
@@ -389,7 +426,7 @@ bool isTempWithinSpecifiedRange(){
 }
 
 bool isHumWithinSpecifiedRange(){
-  if(humidity > highSetHum || humidity < lowSetHum){
+  if(humidity > parameterConfigs["humidity"]["highParameter"] || humidity < parameterConfigs["humidity"]["lowParameter"]){
     return false;
   } else {
     return true;
@@ -421,7 +458,7 @@ void soundWarningBuzzer(){
   noTone(buzzer_pin);
 }
 
-void getSensorJsonData(){
+void sendSensorJsonData(){
   // add JSON request data
   doc.clear();
   doc["content-type"] = "application/json";
@@ -431,18 +468,61 @@ void getSensorJsonData(){
   tempDHT11["sensorName"] = "DHT11";
   tempDHT11["sensorValue"] = temperature;
   tempDHT11["inRange"] = isTempWithinSpecifiedRange();
-  tempDHT11["lowParameter"] = lowSetTemp;
-  tempDHT11["highParameter"] = highSetTemp;
+  tempDHT11["lowParameter"] = parameterConfigs["temperature"]["lowParameter"];
+  tempDHT11["highParameter"] = parameterConfigs["temperature"]["highParameter"];
   tempDHT11["outOfRangeEvents"] = countTempAlarm;
   JsonObject humDHT11 = doc.createNestedObject("humidity sensor");
   humDHT11["sensorName"] = "DHT11";
   humDHT11["sensorValue"] = humidity;
   humDHT11["inRange"] = isHumWithinSpecifiedRange();
-  humDHT11["lowParameter"] = lowSetHum;
-  humDHT11["highParameter"] = highSetHum;
+  humDHT11["lowParameter"] = parameterConfigs["humidity"]["lowParameter"];
+  humDHT11["highParameter"] = parameterConfigs["humidity"]["highParameter"];
   humDHT11["outOfRangeEvents"] = countHumAlarm;
 
   String jsonStr;
   serializeJsonPretty(doc, jsonStr);
   server.send(200, "application/json", jsonStr);
+}
+
+String loadParameterConfigsFromFile() {
+  String result = "";
+  File configsFile = LittleFS.open(parameter_configs_filename, "r");
+  if (!configsFile) { 
+    // failed the read operation return blank result
+    Serial.print("Could not read " + parameter_configs_filename);
+    return result;
+  }
+  while (configsFile.available()) {
+    result += (char)configsFile.read();
+  }
+  configsFile.close();
+  Serial.println("Got " + result + " from " + parameter_configs_filename);
+  buildParametersFromJsonString(result);
+  return result;
+}
+
+bool writeParameterConfigsTofile() {  
+  File configsFile = LittleFS.open(parameter_configs_filename, "w");
+  if (!configsFile) { 
+    // failed to open the configsFile for writing
+    Serial.println("writeParameterConfigsTofile:: Could not open parameter_configs_file to write");
+    return false;
+  }
+
+  String configsStr;
+  serializeJson(parameterConfigs, configsStr);
+  int bytesWritten = configsFile.print(configsStr);
+  if (bytesWritten == 0) { 
+    // write operation failed on configsFile
+    Serial.println("writeParameterConfigsTofile:: Could not write to parameter_configs_file");
+    return false;
+  }
+  Serial.println("writen....");
+  Serial.println(configsStr);    
+  configsFile.close();
+  return true;
+}
+
+void buildParametersFromJsonString(String jsonString){
+  deserializeJson(parameterConfigs, jsonString);
 }
