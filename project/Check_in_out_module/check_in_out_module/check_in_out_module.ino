@@ -173,36 +173,54 @@ void loop(){
   // This keeps the serial monitor available 
   Serial.println("Server is running");
 
-  
+  //read the current potentiometer value
   poteValue = analogRead(potentiometer_pin);
+  //set the current food by the potentiometer value
   current_food = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
+
+  //if the position switch is set to Monitor mode
   if(isMonitorModeActive()){
+    //show the default Monitor mode screen
     if(monitor_mode_screen_selection_value == 0){
       displayEatTodayItems();
+      //check for button presses and change the screen if found
       if(checkForButton1Press()){
         cycleMonitorModeScreens();
       }
+    //show the eat tomorrow screen
     } else if(monitor_mode_screen_selection_value == 1){
       displayEatTomorrowItems();
+      //check for button presses and change the screen if found
       if(checkForButton1Press()){
         cycleMonitorModeScreens();
       }
+    //show the ambient sensor data from the ambient sensor module
     } else if (monitor_mode_screen_selection_value == 2){
+      //get the data from the ambient sensor through the ambient sensor REST API
       getAmbientSensorModuleDataJson();
+      //set the internal conditions (aliases) with the retreived data
       setGlobalConditionsVariablesFromJson();
+      //display the current ambient sensor data to the screen
       displayAmbientSensorModuleCurrentConditions();
+      //delay 20 seconds before polling the server again while maintaining responsiveness
       delayWithResponsiveButtons(20);
     } 
+  //if the position switch is set to AddRemove mode
   } else {
+    //display the AddRemove function on the current food
     if(add_remove_mode_screen_selection_value == 0){
       displayAddRemoveToFromPantryScreen();
+    //display the add waste screen for current foodstuff
     } else if (add_remove_mode_screen_selection_value == 1){
       displayAddWasteScreen();
+    //display the reset waste screen for current foodstuff
     } else if (add_remove_mode_screen_selection_value == 2){
       displayResetWasteScreen();
+    //display the reset waste screen for all foodstuffs
     } else if (add_remove_mode_screen_selection_value == 3){
       displayResetAllWasteScreen();
-    }    
+    }
+    //check for button presses and cycle the screens if seen
     if(checkForButton1Press()){
       cycleAddRemoveModeScreens();
     }
@@ -260,20 +278,25 @@ void displayResetAllWasteScreen(){
   display.println(" Reset all waste to 0");
   display.display();
   if(checkForButton2Press()){
-    for(int i = 0; i < numAvailableFoods; i++){
+    resetAllWasteValues();
+  }
+}
+
+void resetAllWasteValues(){
+  for(int i = 0; i < numAvailableFoods; i++){
       foodstuffs[availableFoods[i][0]]["amountWasted[g]"] = 0.0;    
     }
-    writeToFoodstuffsfile();
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.setTextSize(2);
-    display.println("Reset all");
-    display.setTextSize(1);
-    display.println("");
-    display.print("Reset completed!");
-    display.display();
-    delay(2000);
-  }
+  writeToFoodstuffsfile();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println("Reset all");
+  display.setTextSize(1);
+  display.println("");
+  display.print("Reset completed!");
+  display.display();
+  delay(2000);
+  cycleAddRemoveModeScreens();
 }
 
 void getAmbientSensorModuleDataJson(){
