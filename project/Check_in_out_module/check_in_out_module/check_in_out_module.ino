@@ -34,10 +34,12 @@ HX711_ADC LoadCell(14,12);
 
 const int potentiometer_pin = A0;
 int poteValue;
+int current_food;
 
 const int push_button_pin1 = D7;
 int push_button_value1;
 int monitor_mode_screen_selection_value = 0;
+int add_remove_mode_screen_selection_value = 0;
 
 const int push_button_pin2 = D8;
 int push_button_value2;
@@ -59,7 +61,8 @@ WiFiClient client;
 HTTPClient http;
 StaticJsonDocument<512> doc;
 
-int numScreensInMonitorMode = 4;
+int numScreensInMonitorMode = 3;
+int numScreensInAddRemoveMode = 2;
 
 bool displayIpAddress = false;
 
@@ -134,7 +137,7 @@ void setup() {
     obj["present"] = false;
     obj["timeEntered"] = NULL;
     obj["goodForDays"] = availableFoods[i][1];
-    obj["amountWasted"] = NULL;
+    obj["amountWasted[g]"] = NULL;
   }
 
   String output;
@@ -149,7 +152,7 @@ void loop(){
   Serial.println("Server is running");
   
   poteValue = analogRead(potentiometer_pin);
-  int currentFood = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
+  current_food = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
   if(isMonitorModeActive()){
     if(monitor_mode_screen_selection_value == 0){
       displayEatTodayItems();
@@ -166,31 +169,33 @@ void loop(){
       setGlobalConditionsVariablesFromJson();
       displayAmbientSensorModuleCurrentConditions();
       delayWithResponsiveButtons(20);
-    } else if (monitor_mode_screen_selection_value == 3){
-      displayWeightScreen();
-      if(checkForButton1Press()){
-        cycleMonitorModeScreens();
-      }
-    }
+    } 
   } else {
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.setTextSize(2);
-    display.println(foodstuffs[availableFoods[currentFood][0]]["name"].as<String>());
-    display.setTextSize(1);
-    display.print("In pantry: ");
-    display.println(foodstuffs[availableFoods[currentFood][0]]["present"].as<String>());
-    if(foodstuffs[availableFoods[currentFood][0]]["present"].as<bool>()){
-      display.print("Days kept: ");
-      display.println(getDaysSinceEnteredForFoodstuff(availableFoods[currentFood][0]));
-      display.print("Eat within: ");
-      display.print(getDaysRemainingForFoodstuff(availableFoods[currentFood][0]));
-      display.print(" days");
+    if(add_remove_mode_screen_selection_value == 0){
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.setTextSize(2);
+      display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
+      display.setTextSize(1);
+      display.print("In pantry: ");
+      display.println(foodstuffs[availableFoods[current_food][0]]["present"].as<String>());
+      if(foodstuffs[availableFoods[current_food][0]]["present"].as<bool>()){
+        display.print("Days kept: ");
+        display.println(getDaysSinceEnteredForFoodstuff(availableFoods[current_food][0]));
+        display.print("Eat within: ");
+        display.print(getDaysRemainingForFoodstuff(availableFoods[current_food][0]));
+        display.print(" days");
+      }
+      display.display();
+      if(checkForButton2Press()){
+        foodstuffs[availableFoods[current_food][0]]["present"] = !foodstuffs[availableFoods[current_food][0]]["present"].as<bool>();
+        foodstuffs[availableFoods[current_food][0]]["timeEntered"] = epochTime;
+      }
+    } else if (add_remove_mode_screen_selection_value == 1){
+      displayAddWasteScreen();
     }
-    display.display();
-    if(checkForButton2Press()){
-      foodstuffs[availableFoods[currentFood][0]]["present"] = !foodstuffs[availableFoods[currentFood][0]]["present"].as<bool>();
-      foodstuffs[availableFoods[currentFood][0]]["timeEntered"] = epochTime;
+    if(checkForButton1Press()){
+      cycleAddRemoveModeScreens();
     }
   }  
 }
@@ -387,6 +392,15 @@ void cycleMonitorModeScreens(){
   }
 }
 
+
+void cycleAddRemoveModeScreens(){
+  if(add_remove_mode_screen_selection_value == numScreensInAddRemoveMode - 1){
+    add_remove_mode_screen_selection_value = 0;
+  } else {
+    add_remove_mode_screen_selection_value++;
+  }
+}
+
 ///////////////////web server routes//////////////////////
 //index
 void get_index(){
@@ -425,16 +439,33 @@ void get_pantry_json(){
   server.send(200, "application/json", jsonStr);
 }
 
-void displayWeightScreen(){
+void displayAddWasteScreen(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(2);
-  display.println("Add waste");
+  display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
+  display.println("Add waste: ");
   display.setTextSize(1);
+//  display.print("In pantry: ");
+//  display.println(foodstuffs[availableFoods[current_food][0]]["present"].as<String>());
+//  if(foodstuffs[availableFoods[current_food][0]]["present"].as<bool>()){
+//    display.print("Days kept: ");
+//    display.println(getDaysSinceEnteredForFoodstuff(availableFoods[current_food][0]));
+//    display.print("Eat within: ");
+//    display.print(getDaysRemainingForFoodstuff(availableFoods[current_food][0]));
+//    display.print(" days");
+//  }
+//  display.display();
+//  display.clearDisplay();
+  display.print("Wasted[g]: ");
+  display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<String>());
   LoadCell.update();
   float weightValue = LoadCell.getData();
-  display.setCursor(0,16);
-  display.print("Weight[g]: ");
+  display.setCursor(0,32);
+  display.print("Add waste[g]: ");
   display.print(weightValue);
   display.display();
+  if(checkForButton2Press()){
+    foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"] = foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() + weightValue;  
+  }
 }
