@@ -134,6 +134,7 @@ void setup() {
     obj["present"] = false;
     obj["timeEntered"] = NULL;
     obj["goodForDays"] = availableFoods[i][1];
+    obj["amountWasted"] = NULL;
   }
 
   String output;
@@ -187,16 +188,11 @@ void loop(){
       display.print(" days");
     }
     display.display();
-    int prevPushButtonValue1 = push_button_value1;
-    if(isPushButtonPressed1()){
-      if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
-        foodstuffs[availableFoods[currentFood][0]]["present"] = !foodstuffs[availableFoods[currentFood][0]]["present"].as<bool>();
-        foodstuffs[availableFoods[currentFood][0]]["timeEntered"] = epochTime;
-      }
+    if(checkForButton2Press()){
+      foodstuffs[availableFoods[currentFood][0]]["present"] = !foodstuffs[availableFoods[currentFood][0]]["present"].as<bool>();
+      foodstuffs[availableFoods[currentFood][0]]["timeEntered"] = epochTime;
     }
-  }
-
-  
+  }  
 }
 
 void getAmbientSensorModuleDataJson(){
@@ -374,8 +370,11 @@ bool checkForButton1Press(){
 }
 
 bool checkForButton2Press(){
+  int prevPushButtonValue2 = push_button_value2;
   if(isPushButtonPressed2()){
-    return true;
+    if(prevPushButtonValue2 != push_button_value2 && push_button_value2 == 1){
+      return true;
+    }
   }
   return false;
 }
