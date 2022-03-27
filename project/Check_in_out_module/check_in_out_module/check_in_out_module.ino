@@ -265,13 +265,8 @@ bool isMonitorModeActive(){
   if(prevSwitchValue != switch_value){
     display.clearDisplay();
     display.display();
-    if(switch_value == 1){
-      display.setCursor(0,0);
-      display.setTextSize(1);
-      display.println("Storage conditions"); 
-      display.setCursor(0, 16);
-      display.println("loading...");
-      display.display();  
+    if(switch_value == 1 && monitor_mode_screen_selection_value == 2){
+      displayLoadingStorageConditionsScreen();
     }
   }
   if (switch_value == 0){
@@ -376,6 +371,9 @@ void cycleMonitorModeScreens(){
   } else {
     monitor_mode_screen_selection_value++;
   }
+  if(monitor_mode_screen_selection_value == 2){
+    displayLoadingStorageConditionsScreen();
+  }
 }
 
 
@@ -475,4 +473,14 @@ void displayAddRemoveToFromPantryScreen(){
     display.println("        Add to pantry");  
   }
   display.display();
+}
+
+void displayLoadingStorageConditionsScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(1);
+  display.println("Storage conditions"); 
+  display.setCursor(0, 16);
+  display.println("loading...");
+  display.display(); 
 }
