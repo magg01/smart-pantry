@@ -8,6 +8,8 @@
 #include <NTPClient.h>
 #include <WifiUdp.h>
 #include <ESP8266WebServer.h>
+#include <HX711_ADC.h>
+#include <Wire.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -26,6 +28,10 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 unsigned long epochTime;
 
+//set up the loadcell
+HX711_ADC LoadCell(14,12);
+
+
 const int potentiometer_pin = A0;
 int poteValue;
 
@@ -33,7 +39,7 @@ const int push_button_pin1 = D7;
 int push_button_value1;
 int push_button_count_value1 = 0;
 
-const int push_button_pin2 = D6;
+const int push_button_pin2 = D8;
 int push_button_value2;
 int push_button_count_value2 = 0;
 
@@ -53,7 +59,7 @@ WiFiClient client;
 HTTPClient http;
 StaticJsonDocument<512> doc;
 
-int numScreensInMonitorMode = 3;
+int numScreensInMonitorMode = 4;
 
 bool displayIpAddress = false;
 
@@ -77,6 +83,10 @@ void setup() {
   // Initialize Serial port
   Serial.begin(9600);
   while (!Serial) continue;
+
+  LoadCell.begin();
+  LoadCell.start(2000);
+  LoadCell.setCalFactor(416); //specific to my load cell setup
 
   //initialise the time client
   timeClient.begin();
@@ -136,9 +146,9 @@ void loop(){
   server.handleClient();
   // This keeps the server and serial monitor available 
   Serial.println("Server is running");
+  
   poteValue = analogRead(potentiometer_pin);
   int currentFood = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
-//  int displayValue = map(poteValue, 1023, 0, 0, 1);
   if(isMonitorModeActive()){
     if(push_button_count_value1 == 0){
       displayEatTodayItems();
@@ -155,6 +165,11 @@ void loop(){
       setGlobalConditionsVariablesFromJson();
       displayAmbientSensorModuleCurrentConditions();
       delayWithResponsiveButtons(20);
+    } else if (push_button_count_value1 == 3){
+      displayWeightScreen();
+      if(checkForButton1Press()){
+        cycleScreens();
+      }
     }
   } else {
     display.clearDisplay();
@@ -409,4 +424,18 @@ void get_pantry_json(){
   String jsonStr;  
   serializeJsonPretty(foodstuffs, jsonStr);    
   server.send(200, "application/json", jsonStr);
+}
+
+void displayWeightScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println("Add waste");
+  display.setTextSize(1);
+  LoadCell.update();
+  float weightValue = LoadCell.getData();
+  display.setCursor(0,16);
+  display.print("Weight[g]: ");
+  display.print(weightValue);
+  display.display();
 }
