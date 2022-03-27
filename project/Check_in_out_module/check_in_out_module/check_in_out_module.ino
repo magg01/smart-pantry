@@ -1,3 +1,4 @@
+////////////////////////// External libraries ////////////////////////////////////////////
 #include <LittleFS.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -9,7 +10,6 @@
 #include <WifiUdp.h>
 #include <ESP8266WebServer.h>
 #include <HX711_ADC.h>
-#include <Wire.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -17,56 +17,75 @@
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-// set the port for the web server
+// instantiate and set the port for the web server
 ESP8266WebServer server(80);
-//WiFi connection
+
+//define the IP address of the ambient sensor module for connecting to and reading the sensor data
+//this would obviously be much better not hard-coded in as it is currenly very inflexible.
+const char* host = "192.168.178.71";
+
+// set wifi credentials - these would need to be changed for the locally available network
 const char* ssid = "FRITZ!Box 7590 XO";
 const char* password = "96087252974805885212";
 
 //define the NTP client for getting the time
+//timezones are unimportant as time is only used to calculate number of days 
+//i.e. 25 hour periods between two time points
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
+NTPClient timeClient(ntpUDP, "pool.ntp.org"); //use the worldwide pool ntp
+//global variable to hold the most recently retreived time point as epoch time
+//i.e. seconds since the beginning of 1st Jan 1970
 unsigned long epochTime;
 
-//set up the loadcell
-HX711_ADC LoadCell(14,12);
-
+//Filename for the file that stores the long term data
 String foodstuffs_filename = "saved_foodstuffs.txt";
 
-const int potentiometer_pin = A0;
-int poteValue;
-int current_food;
+//initilalise the loadcell sensor on pins 14 and 12 (D5, D6)
+HX711_ADC LoadCell(14,12);
 
-const int push_button_pin1 = D8;
-int push_button_value1;
+//declare the WiFi and http client used for getting the sensor module ambient sensor data
+WiFiClient client;
+HTTPClient http;
+
+//declare JSON doc used to contain the foodstuffs being tracked and their respective data
+StaticJsonDocument<4000> foodstuffs;
+//declare JSON doc used to respond to JSON REST API requests
+StaticJsonDocument<512> doc;
+
+//allocate the pins to the respective devices
+const int potentiometer_pin = A0;
+const int switch_pin = D0;
+const int push_button2_pin = D7;
+const int push_button1_pin = D8;
+
+//declare the global variables used to keep track of values from sensors and physical devices
+int switch_value;
+int push_button1_value;
+int push_button2_value;
+int poteValue;
+
+//declare global variables for keeping track of the screens displayed on the OLED
 int monitor_mode_screen_selection_value = 0;
 int add_remove_mode_screen_selection_value = 0;
+int numScreensInMonitorMode = 3;
+int numScreensInAddRemoveMode = 4;
+bool displayIpAddress = false;
 
-const int push_button_pin2 = D7;
-int push_button_value2;
-int push_button_count_value2 = 0;
-
-const int switch_pin = D0;
-int switch_value;
-
-const char* host = "192.168.178.71";
-
+//define the available foods for tracking on the device and the number of days they are good for.
+//At the moment this is hardcoded but much better in the next iteration to allow this to be a 
+//modifiable data structure so users can add or remove there own foods and adjust time lengths
 const int numAvailableFoods = 11;
 const String availableFoods[numAvailableFoods][2] = {
   {"Apples", "6"}, {"Bananas", "4"}, {"Blueberry", "3"}, {"Brocolli", "6"}, {"Cauliflwr", "6"}, {"Cherries", "3"}, 
   {"Grapes", "5"}, {"Potatoes", "7"}, {"Onions", "14"}, {"Oranges", "6"}, {"Leftovers", "2"}
 };
-StaticJsonDocument<4000> foodstuffs;
 
-WiFiClient client;
-HTTPClient http;
-StaticJsonDocument<512> doc;
+//global variable for tracking which foodstuff is currently being viewed or edited
+int current_food;
 
-int numScreensInMonitorMode = 3;
-int numScreensInAddRemoveMode = 4;
-
-bool displayIpAddress = false;
-
+//global variables used to contain data from the JSON object retreived from the ambient sensor module
+//these could be eliminated and the JSON doc used directly but they act here as aliases to make the
+//variable names shorter
 int tempSensorValue;
 bool tempSensorInRange;
 int tempSensorLowParameter;
@@ -78,19 +97,24 @@ int humSensorLowParameter;
 int humSensorHighParameter;
 int humSensorOutOfRangeEvents;
 
+////////////////////////// Setup function ////////////////////////////////////////////
 void setup() {
+  //assign the pin modes to the respective device pins
   pinMode(potentiometer_pin, INPUT);
-  pinMode(push_button_pin1, INPUT);
-  pinMode(push_button_pin2, INPUT);
+  pinMode(push_button1_pin, INPUT);
+  pinMode(push_button2_pin, INPUT);
   pinMode(switch_pin, INPUT);
   
-  // Initialize Serial port
+  //initialise Serial port
   Serial.begin(9600);
   while (!Serial) continue;
 
+  //initialise the load cell sensor
   LoadCell.begin();
+  //allow two seconds for values to stabilise
   LoadCell.start(2000);
-  LoadCell.setCalFactor(416); //specific to my load cell setup
+  //set specific calibration factor to my load cell setup
+  LoadCell.setCalFactor(416); 
 
   //initialise the time client
   timeClient.begin();
@@ -98,7 +122,9 @@ void setup() {
 
   //initialise the fileSystem
   LittleFS.begin();
+  //read in from long-term memory the values for all foodstuffs
   String result = loadFoodstuffsFromFile();
+  //if there is no file or a read error then build a new JSON object with initial values
   if (result == ""){
     for(int i = 0; i < numAvailableFoods ; i++){
       JsonObject obj = foodstuffs.createNestedObject(availableFoods[i][0]);
@@ -115,43 +141,38 @@ void setup() {
   server.on("/json/pantry", get_pantry_json);
   //initialise the web server
   server.begin();
+
+  //initialise the OLED display
+  spinUpOledDisplay();
   
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;);
-  }
-  delay(2000);
-  display.clearDisplay();
-  
-  display.setTextColor(WHITE);
-  display.setTextSize(2);
-  display.setCursor(0, 0);
-  // Display welcome message
-  display.println("Welcome to");
-  display.println("Smart");
-  display.println("Pantry!");
-  display.display();
-  
-  // Initialize WiFi library
+  // Connect to the WiFi network
   WiFi.begin(ssid, password);
   delay(1000);
-
+  // wait for successful connection
   while (WiFi.status() != WL_CONNECTED){
     delay(500);
     Serial.println("Waiting to connect...");
   }
   Serial.println("Connected!");
 
-  String output;
-  serializeJson(foodstuffs, output);
+//  String output;
+//  serializeJson(foodstuffs, output);
 }
+////////////////////////// End of setup function ////////////////////////////////////////////
 
+////////////////////////// Loop function ////////////////////////////////////////////////////
 void loop(){
+  //get the current time from the ntp server
   timeClient.update();
+  //set the current epoch time
   epochTime = timeClient.getEpochTime();
+
+  //handle incoming webserver requests
   server.handleClient();
-  // This keeps the server and serial monitor available 
+  
+  // This keeps the serial monitor available 
   Serial.println("Server is running");
+
   
   poteValue = analogRead(potentiometer_pin);
   current_food = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
@@ -186,6 +207,23 @@ void loop(){
       cycleAddRemoveModeScreens();
     }
   }  
+}
+
+void spinUpOledDisplay(){
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+  }
+  delay(2000);
+  display.clearDisplay();
+  //set the OLED color and initial text size and cursor
+  display.setTextColor(WHITE);
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  // Display welcome message
+  display.println("Welcome to");
+  display.println("Smart");
+  display.println("Pantry!");
+  display.display();
 }
 
 void displayResetWasteScreen(){
@@ -296,16 +334,16 @@ void displayAmbientSensorModuleCurrentConditions(){
 }
 
 bool isPushButtonPressed1(){
-  push_button_value1 = digitalRead(push_button_pin1);
-  if (push_button_value1 == 1){
+  push_button1_value = digitalRead(push_button1_pin);
+  if (push_button1_value == 1){
     return true;
   }
   return false;
 }
 
 bool isPushButtonPressed2(){
-  push_button_value2 = digitalRead(push_button_pin2);
-  if (push_button_value2 == 1){
+  push_button2_value = digitalRead(push_button2_pin);
+  if (push_button2_value == 1){
     return true;
   }
   return false;
@@ -398,9 +436,9 @@ int getDaysSinceEnteredForFoodstuff(String foodstuffName){
 }
 
 bool checkForButton1Press(){
-  int prevPushButtonValue1 = push_button_value1;
+  int prevPushButtonValue1 = push_button1_value;
   if(isPushButtonPressed1()){
-    if(prevPushButtonValue1 != push_button_value1 && push_button_value1 == 1){
+    if(prevPushButtonValue1 != push_button1_value && push_button1_value == 1){
       return true;
     }
   }
@@ -408,9 +446,9 @@ bool checkForButton1Press(){
 }
 
 bool checkForButton2Press(){
-  int prevPushButtonValue2 = push_button_value2;
+  int prevPushButtonValue2 = push_button2_value;
   if(isPushButtonPressed2()){
-    if(prevPushButtonValue2 != push_button_value2 && push_button_value2 == 1){
+    if(prevPushButtonValue2 != push_button2_value && push_button2_value == 1){
       return true;
     }
   }
