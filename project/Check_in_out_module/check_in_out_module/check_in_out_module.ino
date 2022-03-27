@@ -1,4 +1,5 @@
-////////////////////////// External libraries ////////////////////////////////////////////
+////////////////////////// External libraries /////////////////////////////////////
+
 #include <LittleFS.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -10,6 +11,8 @@
 #include <WifiUdp.h>
 #include <ESP8266WebServer.h>
 #include <HX711_ADC.h>
+
+/////////////////// Initial values, global variables and sensor declarations //////
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -86,16 +89,18 @@ int current_food;
 //global variables used to contain data from the JSON object retreived from the ambient sensor module
 //these could be eliminated and the JSON doc used directly but they act here as aliases to make the
 //variable names shorter
-int tempSensorValue;
-bool tempSensorInRange;
-int tempSensorLowParameter;
-int tempSensorHighParameter;
-int tempSensorOutOfRangeEvents;
-int humSensorValue;
-bool humSensorInRange;
-int humSensorLowParameter;
-int humSensorHighParameter;
-int humSensorOutOfRangeEvents;
+int temp_sensor_value;
+bool temp_sensor_in_range;
+int temp_sensor_low_parameter;
+int temp_sensor_high_parameter;
+int temp_sensor_out_of_range_events;
+int hum_sensor_value;
+bool hum_sensor_in_range;
+int hum_sensor_low_parameter;
+int hum_sensor_high_parameter;
+int hum_sensor_out_of_range_events;
+
+///////// End of initial values, global variables and sensor declarations ////////////
 
 ////////////////////////// Setup function ////////////////////////////////////////////
 void setup() {
@@ -378,16 +383,16 @@ void getAmbientSensorModuleDataJson(){
 
 //set the global variables (aliases) for the retreived data from the ambient sensor module
 void setGlobalConditionsVariablesFromJson(){
-  tempSensorValue = doc["temperature sensor"]["sensorValue"].as<int>();
-  tempSensorInRange = doc["temperature sensor"]["inRange"].as<bool>();
-  tempSensorLowParameter = doc["temperature sensor"]["lowParameter"].as<int>();
-  tempSensorHighParameter = doc["temperature sensor"]["highParameter"].as<int>();
-  tempSensorOutOfRangeEvents = doc["temperature sensor"]["outOfRangeEvents"].as<int>();
-  humSensorValue = doc["humidity sensor"]["sensorValue"].as<int>();
-  humSensorInRange = doc["humidity sensor"]["inRange"].as<bool>();
-  humSensorLowParameter = doc["humidity sensor"]["lowParameter"].as<int>();
-  humSensorHighParameter = doc["humidity sensor"]["highParameter"].as<int>();
-  humSensorOutOfRangeEvents = doc["humidity sensor"]["outOfRangeEvents"].as<int>();
+  temp_sensor_value = doc["temperature sensor"]["sensorValue"].as<int>();
+  temp_sensor_in_range = doc["temperature sensor"]["inRange"].as<bool>();
+  temp_sensor_low_parameter = doc["temperature sensor"]["lowParameter"].as<int>();
+  temp_sensor_high_parameter = doc["temperature sensor"]["highParameter"].as<int>();
+  temp_sensor_out_of_range_events = doc["temperature sensor"]["outOfRangeEvents"].as<int>();
+  hum_sensor_value = doc["humidity sensor"]["sensorValue"].as<int>();
+  hum_sensor_in_range = doc["humidity sensor"]["inRange"].as<bool>();
+  hum_sensor_low_parameter = doc["humidity sensor"]["lowParameter"].as<int>();
+  hum_sensor_high_parameter = doc["humidity sensor"]["highParameter"].as<int>();
+  hum_sensor_out_of_range_events = doc["humidity sensor"]["outOfRangeEvents"].as<int>();
 }
 ////////////////////// End of HTTP client functions //////////////////////////
 
@@ -559,12 +564,12 @@ void displayAmbientSensorModuleCurrentConditions(){
   display.println("Storage conditions");
   display.setCursor(0,16);
   display.print("T: ");
-  display.print(tempSensorValue);
+  display.print(temp_sensor_value);
   display.print("C");
-  if(tempSensorInRange){
+  if(temp_sensor_in_range){
     display.println(" - okay!");
   } else {
-    if(tempSensorValue < tempSensorLowParameter){
+    if(temp_sensor_value < temp_sensor_low_parameter){
       display.println(" - too low!");
     } else {
       display.println(" - too high!");  
@@ -572,12 +577,12 @@ void displayAmbientSensorModuleCurrentConditions(){
   }
   display.setCursor(0,32);
   display.print("H: ");
-  display.print(humSensorValue);
+  display.print(hum_sensor_value);
   display.print("%");
-    if(humSensorInRange){
+    if(hum_sensor_in_range){
     display.println(" - okay!");
   } else {
-    if(humSensorValue < humSensorLowParameter){
+    if(hum_sensor_value < hum_sensor_low_parameter){
       display.println(" - too low!");
     } else {
       display.println(" - too high!");  
