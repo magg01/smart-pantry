@@ -62,20 +62,20 @@ const int push_button1_pin = D8;
 int switch_value;
 int push_button1_value;
 int push_button2_value;
-int poteValue;
+int pote_value;
+float current_loadcell_value;
 
 //declare global variables for keeping track of the screens displayed on the OLED
 int monitor_mode_screen_selection_value = 0;
 int add_remove_mode_screen_selection_value = 0;
-int numScreensInMonitorMode = 3;
-int numScreensInAddRemoveMode = 4;
-bool displayIpAddress = false;
+int num_screens_in_monitor_mode = 3;
+int num_screens_in_add_remove_mode = 4;
 
 //define the available foods for tracking on the device and the number of days they are good for.
 //At the moment this is hardcoded but much better in the next iteration to allow this to be a 
 //modifiable data structure so users can add or remove there own foods and adjust time lengths
-const int numAvailableFoods = 11;
-const String availableFoods[numAvailableFoods][2] = {
+const int num_available_foods = 11;
+const String available_foods[num_available_foods][2] = {
   {"Apples", "6"}, {"Bananas", "4"}, {"Blueberry", "3"}, {"Brocolli", "6"}, {"Cauliflwr", "6"}, {"Cherries", "3"}, 
   {"Grapes", "5"}, {"Potatoes", "7"}, {"Onions", "14"}, {"Oranges", "6"}, {"Leftovers", "2"}
 };
@@ -126,12 +126,12 @@ void setup() {
   String result = loadFoodstuffsFromFile();
   //if there is no file or a read error then build a new JSON object with initial values
   if (result == ""){
-    for(int i = 0; i < numAvailableFoods ; i++){
-      JsonObject obj = foodstuffs.createNestedObject(availableFoods[i][0]);
-      obj["name"] = availableFoods[i][0];
+    for(int i = 0; i < num_available_foods ; i++){
+      JsonObject obj = foodstuffs.createNestedObject(available_foods[i][0]);
+      obj["name"] = available_foods[i][0];
       obj["present"] = false;
       obj["timeEntered"] = NULL;
-      obj["goodForDays"] = availableFoods[i][1];
+      obj["goodForDays"] = available_foods[i][1];
       obj["amountWasted[g]"] = NULL;
     }
   }
@@ -174,9 +174,13 @@ void loop(){
   Serial.println("Server is running");
 
   //read the current potentiometer value
-  poteValue = analogRead(potentiometer_pin);
+  pote_value = analogRead(potentiometer_pin);
   //set the current food by the potentiometer value
-  current_food = map(poteValue, 1023, 0, 0, numAvailableFoods -1);
+  current_food = map(pote_value, 1023, 0, 0, num_available_foods -1);
+
+  //get the current measured weight from the load cell
+  LoadCell.update();
+  current_loadcell_value = LoadCell.getData();
 
   //if the position switch is set to Monitor mode
   if(isMonitorModeActive()){
@@ -226,79 +230,142 @@ void loop(){
     }
   }  
 }
+////////////////////////// End of loop function /////////////////////////////////
 
-void spinUpOledDisplay(){
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
+////////////////////////// Mode and button functions ////////////////////////////////////
+
+//check the switch position for the current mode and handle logic when switch is repositioned
+bool isMonitorModeActive(){
+  bool prevSwitchValue = switch_value;
+  switch_value = digitalRead(switch_pin);
+  if(prevSwitchValue != switch_value){
+    display.clearDisplay();
+    display.display();
+    if(switch_value == 1 && monitor_mode_screen_selection_value == 2){
+      displayLoadingStorageConditionsScreen();
+    }
   }
-  delay(2000);
-  display.clearDisplay();
-  //set the OLED color and initial text size and cursor
-  display.setTextColor(WHITE);
-  display.setTextSize(2);
-  display.setCursor(0, 0);
-  // Display welcome message
-  display.println("Welcome to");
-  display.println("Smart");
-  display.println("Pantry!");
-  display.display();
+  if (switch_value == 0){
+    return false;
+  }
+  return true;
 }
 
-void displayResetWasteScreen(){
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.setTextSize(2);
-  display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
-  display.setTextSize(1);
-  display.println("");
-  display.print("Wasted[Kg]: ");
-  display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
-  display.println();
-  display.println("");
-  display.println("");
-  display.println("     Reset waste to 0");
-  display.display();
-  if(checkForButton2Press()){
-    foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"] = 0.0;  
-    writeToFoodstuffsfile();
+//returns true if the pushButton1 is currently depressed
+bool isPushButton1Pressed(){
+  push_button1_value = digitalRead(push_button1_pin);
+  if (push_button1_value == 1){
+    return true;
+  }
+  return false;
+}
+
+//returns true if the pushButton2 is currently depressed
+bool isPushButton2Pressed(){
+  push_button2_value = digitalRead(push_button2_pin);
+  if (push_button2_value == 1){
+    return true;
+  }
+  return false;
+}
+
+//checks for a single down-up press of the pushButton1
+bool checkForButton1Press(){
+  int prevPushButtonValue1 = push_button1_value;
+  if(isPushButton1Pressed()){
+    if(prevPushButtonValue1 != push_button1_value && push_button1_value == 1){
+      return true;
+    }
+  }
+  return false;
+}
+
+//checks for a single down-up press of the pushButton2
+bool checkForButton2Press(){
+  int prevPushButtonValue2 = push_button2_value;
+  if(isPushButton2Pressed()){
+    if(prevPushButtonValue2 != push_button2_value && push_button2_value == 1){
+      return true;
+    }
+  }
+  return false;
+}
+////////////////////////// End of mode and button functions ///////////////////////
+
+////////////////////////// Utility functions //////////////////////////////////////
+
+//delay the polling of the server for 10 seconds but check every 1/10th second if
+//the user has changed the Switch position away from monitor mode, or pushed a
+//button. Also keeps the server handling requests. Allows us not to poll the server
+//not too often while maintaining responsiveness.
+void delayWithResponsiveButtons(int waitSeconds){
+  for(int i = waitSeconds * 10; i > 0; i--){
+    delay(100);
+    if(!isMonitorModeActive()){
+      break;
+    }
+    if(checkForButton1Press()){
+      cycleMonitorModeScreens();
+      break;
+    }
+    if(checkForButton2Press()){
+      display.setCursor(0,48);
+      display.print("IP: ");
+      display.print(WiFi.localIP().toString());
+      display.display();
+    }
+    server.handleClient();
   }
 }
 
-void displayResetAllWasteScreen(){
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.setTextSize(2);
-  display.println("Reset all");
-  display.setTextSize(1);
-  display.println("");
-  display.print("Reset the waste levels for all foods?");
-  display.println("");
-  display.println("");
-  display.println("");
-  display.println(" Reset all waste to 0");
-  display.display();
-  if(checkForButton2Press()){
-    resetAllWasteValues();
-  }
+////////////////////// End of utility functions ///////////////////////////////////
+
+//////////////////////////// Pantry functions /////////////////////////////////////
+
+//switch the "present" bool of the current food to its opposite value and record the time entered.
+void addOrRemoveCurrentFoodFromPantry(){
+  foodstuffs[available_foods[current_food][0]]["present"] = !foodstuffs[available_foods[current_food][0]]["present"].as<bool>();
+  foodstuffs[available_foods[current_food][0]]["timeEntered"] = epochTime;
 }
 
+//add waste value from the load cell to the current food waste value
+void addWasteForCurrentFood(){
+  foodstuffs[available_foods[current_food][0]]["amountWasted[g]"] = foodstuffs[available_foods[current_food][0]]["amountWasted[g]"].as<float>() + current_loadcell_value;
+}
+
+//reset all the waste values
 void resetAllWasteValues(){
-  for(int i = 0; i < numAvailableFoods; i++){
-      foodstuffs[availableFoods[i][0]]["amountWasted[g]"] = 0.0;    
+  for(int i = 0; i < num_available_foods; i++){
+      foodstuffs[available_foods[i][0]]["amountWasted[g]"] = 0.0;    
     }
   writeToFoodstuffsfile();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.setTextSize(2);
-  display.println("Reset all");
-  display.setTextSize(1);
-  display.println("");
-  display.print("Reset completed!");
-  display.display();
-  delay(2000);
-  cycleAddRemoveModeScreens();
+  displayResetAllWasteValuesCompletedScreen();
 }
 
+//reset the amount of waste for the current food
+void resetWasteOfCurrentFood(){
+  foodstuffs[available_foods[current_food][0]]["amountWasted[g]"] = 0.0;  
+}
+////////////////////////// End of Pantry functions /////////////////////////////////////
+
+//////////////////////// Time calculation functions ///////////////////////////////
+
+//get the days remaining for a foodstuff before it goes bad as defined in the available foods array
+int getDaysRemainingForFoodstuff(String foodstuffName){
+  int daysSinceEntered = getDaysSinceEnteredForFoodstuff(foodstuffName);
+  return foodstuffs[foodstuffName]["goodForDays"].as<int>() - daysSinceEntered;
+}
+
+//get the days since entry of a foodstuff
+int getDaysSinceEnteredForFoodstuff(String foodstuffName){ 
+  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86400 * 3 - 3; //simulate almost three days later
+  return secondsSinceEntered / 60 / 60 / 24;
+}
+///////////////////// End of calculation functions ///////////////////////////
+
+////////////////////////// HTTP client functions /////////////////////////////
+
+//get the ambient sensor data from the ambient sensor module via an HTTP request to its REST api
 void getAmbientSensorModuleDataJson(){
   http.useHTTP10(true);
   http.begin(client, "http://192.168.178.71/json/sensors");
@@ -309,6 +376,7 @@ void getAmbientSensorModuleDataJson(){
   http.end();
 }
 
+//set the global variables (aliases) for the retreived data from the ambient sensor module
 void setGlobalConditionsVariablesFromJson(){
   tempSensorValue = doc["temperature sensor"]["sensorValue"].as<int>();
   tempSensorInRange = doc["temperature sensor"]["inRange"].as<bool>();
@@ -321,7 +389,169 @@ void setGlobalConditionsVariablesFromJson(){
   humSensorHighParameter = doc["humidity sensor"]["highParameter"].as<int>();
   humSensorOutOfRangeEvents = doc["humidity sensor"]["outOfRangeEvents"].as<int>();
 }
+////////////////////// End of HTTP client functions //////////////////////////
 
+////////////////////////////// Web server routes /////////////////////////////
+
+//at the index return the dashboard
+void get_index(){
+  String html = "<!DOCTYPE html> <html>";
+  html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
+  html += "<body> <h1>The Smart Pantry Check-in/out Module Dashboard</h1>";
+  html += "<p>Welcome to the Smart Pantry dashboard</p>";
+  html += "</br><h2>Pantry contents</h2>";
+  //write a table of the current contents of the pantry
+  html += "<table>";
+  html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Days in pantry</th><th style=\"border-bottom: 2px solid black;\">Days until spoilage</th>";
+  int presentCount = 0;
+  for(int i = 0; i < num_available_foods; i++){
+    if(foodstuffs[available_foods[i][0]]["present"].as<bool>()){
+      presentCount++;
+      String daysSinceEntered = String(getDaysSinceEnteredForFoodstuff(available_foods[i][0]));
+      String daysRemaining = String(getDaysRemainingForFoodstuff(available_foods[i][0]));
+      html += "<tr>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + available_foods[i][0] + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + daysSinceEntered + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + daysRemaining + "</td>";
+      html += "</tr>";
+    }
+  }
+  html += "</table>";
+  if(presentCount == 0){
+    html += "<p>The Pantry is empty!</p>";
+  }
+  html += "</br><h2>Waste records</h2>";
+  //write a table of the cumulative waste of all foodstuffs
+  html += "<table>";
+  html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Amount wasted (Kg)</th>";
+  int wastedCount = 0;
+  for(int i = 0; i < num_available_foods; i++){
+    float amountWastedG = foodstuffs[available_foods[i][0]]["amountWasted[g]"].as<float>();
+    if(amountWastedG > 0.00){
+      String amountWastedKg = String(amountWastedG / 1000);
+      wastedCount++;
+      html += "<tr>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + available_foods[i][0] + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + amountWastedKg + "</td>";
+      html += "</tr>";
+    }
+  }
+  html += "</table>";
+  if(wastedCount == 0){
+    html += "<p>You haven't wasted any food yet. Well done!</p>";
+  }
+  html += "</body> </html>";
+  server.send(200, "text/html", html);
+}
+
+//return the pantry contents and their data as prettified JSON
+void get_pantry_json(){
+  String jsonStr;  
+  serializeJsonPretty(foodstuffs, jsonStr);    
+  server.send(200, "application/json", jsonStr);
+}
+
+//////////////////////// End of web server routes /////////////////////////
+
+///////////////////////// Filesystem functions ///////////////////////////////
+
+//load the pantry data from file
+String loadFoodstuffsFromFile() {
+  String result = "";
+  File foodstuffsFile = LittleFS.open(foodstuffs_filename, "r");
+  if (!foodstuffsFile) { 
+    // failed the read operation return blank result
+    Serial.print("Could not read " + foodstuffs_filename);
+    return result;
+  }
+  while (foodstuffsFile.available()) {
+    result += (char)foodstuffsFile.read();
+  }
+  foodstuffsFile.close();
+  Serial.print("Got " + result + " from " + foodstuffs_filename);
+  buildFoodstuffsFromString(result);
+  return result;
+}
+
+//build the JSON foodstuffs document from a string 
+//i.e the loaded data from the pantry from the filesystem
+void buildFoodstuffsFromString(String jsonString){
+  deserializeJson(foodstuffs, jsonString);  
+}
+
+//write the current JSON foodstuffs document out to file for non-volatile storage
+bool writeToFoodstuffsfile() {  
+  File foodstuffsFile = LittleFS.open(foodstuffs_filename, "w");
+  if (!foodstuffsFile) { 
+    // failed to open the foodstuffsFile for writing
+    return false;
+  }
+
+  String foodstuffsStr;
+  serializeJson(foodstuffs, foodstuffsStr);
+  int bytesWritten = foodstuffsFile.print(foodstuffsStr);
+  if (bytesWritten == 0) { 
+    // write operation failed on foodstuffsFile
+    return false;
+  }
+   
+  foodstuffsFile.close();
+  return true;
+}
+//////////////////// End of filesystem functions ////////////////////////////
+
+/////////////////////////// OLED Display functions //////////////////////////////
+
+//perform initialisation of the OLED display and print the welcome message
+void spinUpOledDisplay(){
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 OLED display failed to initialise");
+  }
+  delay(2000);
+  //make sure the display is clear
+  display.clearDisplay();
+  //set the OLED text color, white here though will display on the modal as yellow for first two
+  //lines (at text size 1) and blue underneath
+  display.setTextColor(WHITE);
+  displayWelcomeMessage();
+}
+
+//cycle through the screens in Monitor mode
+void cycleMonitorModeScreens(){
+  if(monitor_mode_screen_selection_value == num_screens_in_monitor_mode - 1){
+    monitor_mode_screen_selection_value = 0;
+  } else {
+    monitor_mode_screen_selection_value++;
+  }
+  if(monitor_mode_screen_selection_value == 2){
+    displayLoadingStorageConditionsScreen();
+  }
+}
+
+//cycle through the screens in AddRemove mode
+void cycleAddRemoveModeScreens(){
+  if(add_remove_mode_screen_selection_value == num_screens_in_add_remove_mode - 1){
+    add_remove_mode_screen_selection_value = 0;
+  } else {
+    add_remove_mode_screen_selection_value++;
+  }
+}
+
+//display the welcome message to the OLED screen
+void displayWelcomeMessage(){
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  // Display welcome message
+  display.println("Welcome to");
+  display.println("Smart");
+  display.println("Pantry!");
+  display.display();
+}
+
+        ///// Monitor mode screens ////
+
+//display the current ambient sensor data
 void displayAmbientSensorModuleCurrentConditions(){
   display.clearDisplay();
   display.setTextSize(1);
@@ -356,74 +586,17 @@ void displayAmbientSensorModuleCurrentConditions(){
   display.display();
 }
 
-bool isPushButtonPressed1(){
-  push_button1_value = digitalRead(push_button1_pin);
-  if (push_button1_value == 1){
-    return true;
-  }
-  return false;
-}
-
-bool isPushButtonPressed2(){
-  push_button2_value = digitalRead(push_button2_pin);
-  if (push_button2_value == 1){
-    return true;
-  }
-  return false;
-}
-
-bool isMonitorModeActive(){
-  bool prevSwitchValue = switch_value;
-  switch_value = digitalRead(switch_pin);
-  if(prevSwitchValue != switch_value){
-    display.clearDisplay();
-    display.display();
-    if(switch_value == 1 && monitor_mode_screen_selection_value == 2){
-      displayLoadingStorageConditionsScreen();
-    }
-  }
-  if (switch_value == 0){
-    return false;
-  }
-  return true;
-}
-
-//delay the polling of the server for 10 seconds 
-//but check every 1/10th second if the user has changed 
-//the Switch position away from monitor mode, or pushed a
-//button. Also keeps the server handling requests.
-//Allows us not to poll the server too often while 
-//maintaining responsiveness.
-void delayWithResponsiveButtons(int waitSeconds){
-  for(int i = waitSeconds * 10; i > 0; i--){
-    delay(100);
-    if(!isMonitorModeActive()){
-      break;
-    }
-    if(checkForButton1Press()){
-      cycleMonitorModeScreens();
-      break;
-    }
-    if(checkForButton2Press()){
-      display.setCursor(0,48);
-      display.print("IP: ");
-      display.print(WiFi.localIP().toString());
-      display.display();
-    }
-    server.handleClient();
-  }
-}
-
+//display the screen with items to eat today
 void displayEatTodayItems(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(2);
   display.println("Eat today:");
   display.setTextSize(1);
-  for(int i = 0; i < numAvailableFoods; i++){
-    if(foodstuffs[availableFoods[i][0]]["present"]){
-      if(getDaysRemainingForFoodstuff(availableFoods[i][0]) <= 0){
-        display.print(foodstuffs[availableFoods[i][0]]["name"].as<String>());
+  for(int i = 0; i < num_available_foods; i++){
+    if(foodstuffs[available_foods[i][0]]["present"]){
+      if(getDaysRemainingForFoodstuff(available_foods[i][0]) <= 0){
+        display.print(foodstuffs[available_foods[i][0]]["name"].as<String>());
         display.print(", ");
       }
     }
@@ -431,16 +604,17 @@ void displayEatTodayItems(){
   display.display();
 }
 
+//display the screen with items to eat by tomorrow
 void displayEatTomorrowItems(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(1);
   display.println("Eat by tomorrow:");
   display.setCursor(0,16);
-  for(int i = 0; i < numAvailableFoods; i++){
-    if(foodstuffs[availableFoods[i][0]]["present"]){
-      if(getDaysRemainingForFoodstuff(availableFoods[i][0]) == 1){
-        display.print(foodstuffs[availableFoods[i][0]]["name"].as<String>());
+  for(int i = 0; i < num_available_foods; i++){
+    if(foodstuffs[available_foods[i][0]]["present"]){
+      if(getDaysRemainingForFoodstuff(available_foods[i][0]) == 1){
+        display.print(foodstuffs[available_foods[i][0]]["name"].as<String>());
         display.print(", ");
       }
     }
@@ -448,153 +622,37 @@ void displayEatTomorrowItems(){
   display.display();
 }
 
-int getDaysRemainingForFoodstuff(String foodstuffName){
-  int daysSinceEntered = getDaysSinceEnteredForFoodstuff(foodstuffName);
-  return foodstuffs[foodstuffName]["goodForDays"].as<int>() - daysSinceEntered;
-}
-
-int getDaysSinceEnteredForFoodstuff(String foodstuffName){ 
-  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86400 * 3 - 3; //simulate almost three days later
-  return secondsSinceEntered / 60 / 60 / 24;
-}
-
-bool checkForButton1Press(){
-  int prevPushButtonValue1 = push_button1_value;
-  if(isPushButtonPressed1()){
-    if(prevPushButtonValue1 != push_button1_value && push_button1_value == 1){
-      return true;
-    }
-  }
-  return false;
-}
-
-bool checkForButton2Press(){
-  int prevPushButtonValue2 = push_button2_value;
-  if(isPushButtonPressed2()){
-    if(prevPushButtonValue2 != push_button2_value && push_button2_value == 1){
-      return true;
-    }
-  }
-  return false;
-}
-
-void cycleMonitorModeScreens(){
-  if(monitor_mode_screen_selection_value == numScreensInMonitorMode - 1){
-    monitor_mode_screen_selection_value = 0;
-  } else {
-    monitor_mode_screen_selection_value++;
-  }
-  if(monitor_mode_screen_selection_value == 2){
-    displayLoadingStorageConditionsScreen();
-  }
-}
-
-
-void cycleAddRemoveModeScreens(){
-  if(add_remove_mode_screen_selection_value == numScreensInAddRemoveMode - 1){
-    add_remove_mode_screen_selection_value = 0;
-  } else {
-    add_remove_mode_screen_selection_value++;
-  }
-}
-
-///////////////////web server routes//////////////////////
-//index
-void get_index(){
-  String html = "<!DOCTYPE html> <html>";
-  html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
-  html += "<body> <h1>The Smart Pantry Check-in/out Module Dashboard</h1>";
-  html += "<p>Welcome to the Smart Pantry dashboard</p>";
-  html += "</br><h2>Pantry contents</h2>";
-  html += "<table>";
-  html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Days in pantry</th><th style=\"border-bottom: 2px solid black;\">Days until spoilage</th>";
-  int presentCount = 0;
-  for(int i = 0; i < numAvailableFoods; i++){
-    if(foodstuffs[availableFoods[i][0]]["present"].as<bool>()){
-      presentCount++;
-      String daysSinceEntered = String(getDaysSinceEnteredForFoodstuff(availableFoods[i][0]));
-      String daysRemaining = String(getDaysRemainingForFoodstuff(availableFoods[i][0]));
-      html += "<tr>";
-      html += "<td style=\"border-bottom: 1px solid black;\">" + availableFoods[i][0] + "</td>";
-      html += "<td style=\"border-bottom: 1px solid black;\">" + daysSinceEntered + "</td>";
-      html += "<td style=\"border-bottom: 1px solid black;\">" + daysRemaining + "</td>";
-      html += "</tr>";
-    }
-  }
-  html += "</table>";
-  if(presentCount == 0){
-    html += "<p>The Pantry is empty!</p>";
-  }
-  html += "</br><h2>Wastage records</h2>";
-  html += "<table>";
-  html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Amount wasted (Kg)</th>";
-  int wastedCount = 0;
-  for(int i = 0; i < numAvailableFoods; i++){
-    float amountWastedG = foodstuffs[availableFoods[i][0]]["amountWasted[g]"].as<float>();
-    if(amountWastedG > 0.00){
-      String amountWastedKg = String(amountWastedG / 1000);
-      wastedCount++;
-      html += "<tr>";
-      html += "<td style=\"border-bottom: 1px solid black;\">" + availableFoods[i][0] + "</td>";
-      html += "<td style=\"border-bottom: 1px solid black;\">" + amountWastedKg + "</td>";
-      html += "</tr>";
-    }
-  }
-  html += "</table>";
-  if(wastedCount == 0){
-    html += "<p>You haven't wasted any food yet. Well done!</p>";
-  }
-  html += "</body> </html>";
-  server.send(200, "text/html", html);
-}
-
-//json pantry contents
-void get_pantry_json(){
-  String jsonStr;  
-  serializeJsonPretty(foodstuffs, jsonStr);    
-  server.send(200, "application/json", jsonStr);
-}
-
-void displayAddWasteScreen(){
+//display the screen while waiting for data from the ambient sensor module
+void displayLoadingStorageConditionsScreen(){
   display.clearDisplay();
   display.setCursor(0,0);
-  display.setTextSize(2);
-  display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
   display.setTextSize(1);
-  display.println("");
-  display.print("Wasted[Kg]: ");
-  display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
-  display.println("");
-  LoadCell.update();
-  float weightValue = LoadCell.getData();
-  display.print("Scales[g]: ");
-  display.print(weightValue);
-  display.println("");
-  display.println("");
-  display.println("            Add waste");
-  display.display();
-  if(checkForButton2Press()){
-    foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"] = foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() + weightValue;  
-    writeToFoodstuffsfile();
-  }
+  display.println("Storage conditions"); 
+  display.setCursor(0, 16);
+  display.println("loading...");
+  display.display(); 
 }
+        ///// End of Monitor mode screens ////
 
+          ///// AddRemove mode screens ////
+
+//display the screen to view and add or remove a foodstuff from the pantry
 void displayAddRemoveToFromPantryScreen(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(2);
-  display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
+  display.println(foodstuffs[available_foods[current_food][0]]["name"].as<String>());
   display.setTextSize(1);
   display.println("");
-  if(foodstuffs[availableFoods[current_food][0]]["present"].as<bool>()){
+  if(foodstuffs[available_foods[current_food][0]]["present"].as<bool>()){
     display.print("Days kept: ");
-    display.println(getDaysSinceEnteredForFoodstuff(availableFoods[current_food][0]));
+    display.println(getDaysSinceEnteredForFoodstuff(available_foods[current_food][0]));
     display.println("");
     display.print("Eat within: ");
-    display.print(getDaysRemainingForFoodstuff(availableFoods[current_food][0]));
+    display.print(getDaysRemainingForFoodstuff(available_foods[current_food][0]));
     display.print(" days");
   }
-  if(foodstuffs[availableFoods[current_food][0]]["present"]){
+  if(foodstuffs[available_foods[current_food][0]]["present"]){
     display.println("");
     display.println("");
     display.println("   Remove from pantry");  
@@ -607,61 +665,88 @@ void displayAddRemoveToFromPantryScreen(){
   }
   display.display();
   if(checkForButton2Press()){
-    //switch the "present" bool to its opposite value and record the time entered.
-    foodstuffs[availableFoods[current_food][0]]["present"] = !foodstuffs[availableFoods[current_food][0]]["present"].as<bool>();
-    foodstuffs[availableFoods[current_food][0]]["timeEntered"] = epochTime;
+    addOrRemoveCurrentFoodFromPantry();
     //write the changes to the saved foodstuffs file
     writeToFoodstuffsfile();
   }
 }
 
-void displayLoadingStorageConditionsScreen(){
+//display the add waste screen for the current food to the OLED screen
+void displayAddWasteScreen(){
   display.clearDisplay();
   display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println(foodstuffs[available_foods[current_food][0]]["name"].as<String>());
   display.setTextSize(1);
-  display.println("Storage conditions"); 
-  display.setCursor(0, 16);
-  display.println("loading...");
-  display.display(); 
+  display.println("");
+  display.print("Wasted[Kg]: ");
+  display.println(foodstuffs[available_foods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
+  display.println("");
+  display.print("Scales[g]: ");
+  display.print(current_loadcell_value);
+  display.println("");
+  display.println("");
+  display.println("            Add waste");
+  display.display();
+  if(checkForButton2Press()){
+    addWasteForCurrentFood();  
+    writeToFoodstuffsfile();
+  }
 }
 
-String loadFoodstuffsFromFile() {
-  String result = "";
-  File foodstuffsFile = LittleFS.open(foodstuffs_filename, "r");
-  if (!foodstuffsFile) { 
-    // failed the read operation return blank result
-    Serial.print("Could not read " + foodstuffs_filename);
-    return result;
+//display the reset waste screen for the current food to the OLED screen
+void displayResetWasteScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println(foodstuffs[available_foods[current_food][0]]["name"].as<String>());
+  display.setTextSize(1);
+  display.println("");
+  display.print("Wasted[Kg]: ");
+  display.println(foodstuffs[available_foods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
+  display.println();
+  display.println("");
+  display.println("");
+  display.println("     Reset waste to 0");
+  display.display();
+  if(checkForButton2Press()){
+    resetWasteOfCurrentFood();
+    writeToFoodstuffsfile();
   }
-  while (foodstuffsFile.available()) {
-    result += (char)foodstuffsFile.read();
-  }
-  foodstuffsFile.close();
-  Serial.print("Got " + result + " from " + foodstuffs_filename);
-  buildFoodstuffsFromString(result);
-  return result;
 }
 
-void buildFoodstuffsFromString(String jsonString){
-  deserializeJson(foodstuffs, jsonString);  
+//display the reset all waste screen to the OLED screen
+void displayResetAllWasteScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println("Reset all");
+  display.setTextSize(1);
+  display.println("");
+  display.print("Reset the waste levels for all foods?");
+  display.println("");
+  display.println("");
+  display.println("");
+  display.println(" Reset all waste to 0");
+  display.display();
+  if(checkForButton2Press()){
+    resetAllWasteValues();
+  }
 }
 
-
-bool writeToFoodstuffsfile() {  
-  File foodstuffsFile = LittleFS.open(foodstuffs_filename, "w");
-  if (!foodstuffsFile) { 
-    // failed to open the foodstuffsFile for writing
-    return false;
-  }
-
-  String foodstuffsStr;
-  serializeJson(foodstuffs, foodstuffsStr);
-  int bytesWritten = foodstuffsFile.print(foodstuffsStr);
-  if (bytesWritten == 0) { 
-    // write operation failed on foodstuffsFile
-    return false;
-  }
-   
-  foodstuffsFile.close();
-  return true;
+//display the success screen for resetting all waste values
+void displayResetAllWasteValuesCompletedScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println("Reset all");
+  display.setTextSize(1);
+  display.println("");
+  display.print("Reset completed!");
+  display.display();
+  delay(2000);
+  cycleAddRemoveModeScreens();
 }
+            ///// End of AddRemove mode screens ////
+
+//////////////////// End of OLED Display functions ///////////////////////
