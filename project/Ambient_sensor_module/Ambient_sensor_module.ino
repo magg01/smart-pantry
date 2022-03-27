@@ -7,13 +7,15 @@
 
 // set the port for the web server
 ESP8266WebServer server(80);
+
+// set wifi credentials - these would need to be changed for the locally available network
 const char* ssid = "FRITZ!Box 7590 XO";
 const char* password = "96087252974805885212";
 
-//allocate the JSON document
-//allows us to allocate memory to the document dynamically.
+//allocate the JSON document for responding to /json/pantry requests
 DynamicJsonDocument doc(1024);
-StaticJsonDocument<1000> parameterConfigs;
+//allocate the JSON document for keeping track of the 
+StaticJsonDocument<256> parameterConfigs;
 
 const int switch_pin = D0;
 int switch_value;
