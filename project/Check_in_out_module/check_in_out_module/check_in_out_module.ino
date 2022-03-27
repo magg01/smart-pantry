@@ -392,7 +392,7 @@ void get_index(){
   html += "<head><meta http_equiv=\"refresh\" content=\"2\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>";
   html += "<body> <h1>The Smart Pantry Check-in/out Module Dashboard</h1>";
   html += "<p>Welcome to the Smart Pantry dashboard</p>";
-  html += "<h2>Pantry contents</h2>";
+  html += "</br><h2>Pantry contents</h2>";
   html += "<table>";
   html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Days in pantry</th><th style=\"border-bottom: 2px solid black;\">Days until spoilage</th>";
   int presentCount = 0;
@@ -411,6 +411,25 @@ void get_index(){
   html += "</table>";
   if(presentCount == 0){
     html += "<p>The Pantry is empty!</p>";
+  }
+  html += "</br><h2>Wastage records</h2>";
+  html += "<table>";
+  html += "<th style=\"border-bottom: 2px solid black;\">Foodstuff</th><th style=\"border-bottom: 2px solid black;\">Amount wasted (Kg)</th>";
+  int wastedCount = 0;
+  for(int i = 0; i < numAvailableFoods; i++){
+    float amountWastedG = foodstuffs[availableFoods[i][0]]["amountWasted[g]"].as<float>();
+    if(amountWastedG > 0.00){
+      String amountWastedKg = String(amountWastedG / 1000);
+      wastedCount++;
+      html += "<tr>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + availableFoods[i][0] + "</td>";
+      html += "<td style=\"border-bottom: 1px solid black;\">" + amountWastedKg + "</td>";
+      html += "</tr>";
+    }
+  }
+  html += "</table>";
+  if(wastedCount == 0){
+    html += "<p>You haven't wasted any food yet. Well done!</p>";
   }
   html += "</body> </html>";
   server.send(200, "text/html", html);
