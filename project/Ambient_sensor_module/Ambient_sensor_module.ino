@@ -146,7 +146,7 @@ void loop() {
   //handle incoming http requests
   server.handleClient();
 
-  //This keeps the server and serial monitor available 
+  //This keeps the serial monitor available 
   Serial.println("Server is running");
 
   //read the pir sensor value and turn on/off the LCD backlight and display accordingly
