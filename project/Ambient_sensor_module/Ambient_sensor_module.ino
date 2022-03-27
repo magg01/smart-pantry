@@ -80,7 +80,6 @@ void setup() {
   //assign the pin modes to the respective device pins
   pinMode(switch_pin, INPUT);
   pinMode(potentiometer_pin, INPUT);
-  pinMode(led_pin, OUTPUT);
   pinMode(buzzer_pin, OUTPUT);
   pinMode(push_button_pin, INPUT);
   pinMode(pir_sensor_pin, INPUT);
@@ -89,7 +88,7 @@ void setup() {
 
   //initialise Serial communication
   Serial.begin(9600);
-  delay(2000);
+  while (!Serial) continue;
 
   //initialise the fileSystem
   LittleFS.begin();
