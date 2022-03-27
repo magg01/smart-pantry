@@ -172,21 +172,7 @@ void loop(){
     } 
   } else {
     if(add_remove_mode_screen_selection_value == 0){
-      display.clearDisplay();
-      display.setCursor(0,0);
-      display.setTextSize(2);
-      display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
-      display.setTextSize(1);
-      display.print("In pantry: ");
-      display.println(foodstuffs[availableFoods[current_food][0]]["present"].as<String>());
-      if(foodstuffs[availableFoods[current_food][0]]["present"].as<bool>()){
-        display.print("Days kept: ");
-        display.println(getDaysSinceEnteredForFoodstuff(availableFoods[current_food][0]));
-        display.print("Eat within: ");
-        display.print(getDaysRemainingForFoodstuff(availableFoods[current_food][0]));
-        display.print(" days");
-      }
-      display.display();
+      displayAddRemoveToFromPantryScreen();
       if(checkForButton2Press()){
         foodstuffs[availableFoods[current_food][0]]["present"] = !foodstuffs[availableFoods[current_food][0]]["present"].as<bool>();
         foodstuffs[availableFoods[current_food][0]]["timeEntered"] = epochTime;
@@ -445,7 +431,7 @@ void displayAddWasteScreen(){
   display.setTextSize(2);
   display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
   display.setTextSize(1);
-  display.println("             Add waste");
+  display.println("            Add waste");
   display.println("");
   display.print("Wasted[Kg]: ");
   display.println(foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() / 1000);
@@ -458,4 +444,27 @@ void displayAddWasteScreen(){
   if(checkForButton2Press()){
     foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"] = foodstuffs[availableFoods[current_food][0]]["amountWasted[g]"].as<float>() + weightValue;  
   }
+}
+
+void displayAddRemoveToFromPantryScreen(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(2);
+  display.println(foodstuffs[availableFoods[current_food][0]]["name"].as<String>());
+  display.setTextSize(1);
+  if(foodstuffs[availableFoods[current_food][0]]["present"]){ //as<bool>?
+    display.println("   Remove from pantry");  
+  } else {
+    display.println("        Add to pantry");  
+  }
+  if(foodstuffs[availableFoods[current_food][0]]["present"].as<bool>()){
+    display.println("");
+    display.print("Days kept: ");
+    display.println(getDaysSinceEnteredForFoodstuff(availableFoods[current_food][0]));
+    display.println("");
+    display.print("Eat within: ");
+    display.print(getDaysRemainingForFoodstuff(availableFoods[current_food][0]));
+    display.print(" days");
+  }
+  display.display();
 }
