@@ -12,10 +12,17 @@ Arduino IDE sketches, Fritzing board diagrams and photos are provided for each n
 ### Ambient sensor module
 Monitors humidity and temperature and warns the user about out of range events to ensure their food is stored in optimum conditions for longevity.
 
+<img src="https://user-images.githubusercontent.com/34540708/217272734-53dd2bbd-714c-4f1d-af0c-332e5b607b6b.png" width="300" height="200">  <img src="https://user-images.githubusercontent.com/34540708/217272328-79518606-b6bf-43ca-b3f3-f01d6473ebc0.png" width="300" height="200">
+
 ### Check in/out module
 Foodstuffs can be checked in to the system whereupon their spoilage time is tracked and reminders served to the user about when they should be eaten through the integrated OLED screen.
 
+<img src="https://user-images.githubusercontent.com/34540708/217270662-209c542f-03d6-4a27-a7a1-0c0ced2d9f81.png" width="200" height="200">  <img src="https://user-images.githubusercontent.com/34540708/217270688-c6300f3e-0355-4519-a7cf-0ed4a876aae6.png" width="200" height="200">
+
 Waste levels can be input by weighing waste using the connected load cell and tracked over time to allow users to record and review their waste levels and adjust their purchasing or usage behaviours.
+
+<img src="https://user-images.githubusercontent.com/34540708/217270583-70ab4195-0d31-452f-ae4d-a8749c168199.png" width="200" height="200">
+
 
 ## Suggested next steps
 Improve the web dashboards to provide time series data - for example graphed waste levels.
