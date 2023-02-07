@@ -363,7 +363,7 @@ int getDaysRemainingForFoodstuff(String foodstuffName){
 
 //get the days since entry of a foodstuff
 int getDaysSinceEnteredForFoodstuff(String foodstuffName){ 
-  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>() + 86400 * 3 - 3; //simulate almost three days later
+  int secondsSinceEntered = epochTime - foodstuffs[foodstuffName]["timeEntered"].as<int>(); // + 86400 * 3 - 3; //simulate almost three days later
   return secondsSinceEntered / 60 / 60 / 24;
 }
 ///////////////////// End of calculation functions ///////////////////////////

@@ -1,5 +1,5 @@
-
 ////////////////////////// External libraries ////////////////////////////////////////////
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include "DHT.h"
@@ -7,7 +7,7 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
-////////////////////////// Initial values, global variables and sensor declarations //////
+/////////////////// Initial values, global variables and sensor declarations ////////////
 
 // instantiate and set the port for the web server
 ESP8266WebServer server(80);
@@ -74,6 +74,7 @@ const String setHighHumMessage1 = "Set high humid:";
 const String save_parameters_message_line1 = "Go to monitor";
 const String save_parameters_message_line2 = "mode to save.";
 
+/////////////// End of initial values, global variables and sensor declarations ////////////
 
 ////////////////////////// Setup function ////////////////////////////////////////////
 void setup() {
