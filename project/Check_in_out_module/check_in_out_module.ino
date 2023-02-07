@@ -28,8 +28,8 @@ ESP8266WebServer server(80);
 const char* host = "192.168.178.71";
 
 // set wifi credentials - these would need to be changed for the locally available network
-const char* ssid = "FRITZ!Box 7590 XO";
-const char* password = "96087252974805885212";
+const char* ssid = "INSERT LOCAL WIFI SSID HERE";
+const char* password = "INSERT LOCAL WIFI password HERE";
 
 //define the NTP client for getting the time
 //timezones are unimportant as time is only used to calculate number of days 

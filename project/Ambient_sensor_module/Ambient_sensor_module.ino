@@ -13,8 +13,8 @@
 ESP8266WebServer server(80);
 
 // set wifi credentials - these would need to be changed for the locally available network
-const char* ssid = "FRITZ!Box 7590 XO";
-const char* password = "96087252974805885212";
+const char* ssid = "INSERT LOCAL WIFI SSID HERE";
+const char* password = "INSERT LOCAL WIFI password HERE";
 
 //Filename for the file that stores the long term data
 const String parameter_configs_filename = "/parameterConfigs.txt";
