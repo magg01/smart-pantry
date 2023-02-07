@@ -1,4 +1,4 @@
-# smart-pantry
+# Smart Pantry
  A smart pantry system to help consumers reduce their food waste. Allows the user to monitor storage conditions, track perishable item expiry dates and record waste levels. Each node presents a rudimentary web-based dashboard served to the local network for data summary.
 
 ## Introduction
